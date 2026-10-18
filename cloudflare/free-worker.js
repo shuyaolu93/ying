@@ -84,6 +84,9 @@ export default {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/") return Response.redirect("https://shuyaolu93.github.io/ronghe/", 302);
     if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB) });
+    if (request.method === "GET" && url.pathname === "/api") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB), endpoints: { risk_check: { method: "POST", path: "/api/risk/check", content_type: "application/json" }, quality: { method: "POST", path: "/api/analysis/quality", content_type: "application/json" }, risk_history: { method: "GET", path: "/api/risk/history" } } });
+    if (request.method === "GET" && url.pathname === "/api/risk/check") return json({ error: "method_not_allowed", message: "请使用 POST，并发送 JSON 风控参数", method: "POST", endpoint: "/api/risk/check" }, 405);
+    if (request.method === "GET" && url.pathname === "/api/analysis/quality") return json({ error: "method_not_allowed", message: "请使用 POST，并发送 JSON K线数据", method: "POST", endpoint: "/api/analysis/quality" }, 405);
     if (request.method === "GET" && url.pathname === "/api/risk/history") {
       if (!env.DB) return json({ error: "database_not_configured" }, 503);
       const { results } = await env.DB.prepare("SELECT * FROM risk_decisions ORDER BY id DESC LIMIT 50").all();
