@@ -657,49 +657,19 @@
   function validateRisk() {
     var positionValid = validNumericInput('#singlePositionInput');
     var leverageValid = validNumericInput('#leverageInput');
-    var assetValid = validNumericInput('#accountAsset') && numberValue('#accountAsset', 0) > 0;
-    var budgetValid = validNumericInput('#riskBudget') && numberValue('#riskBudget', 0) > 0;
-    var entryValid = validNumericInput('#entryPrice') && numberValue('#entryPrice', 0) > 0;
-    var stopValid = validNumericInput('#stopPrice') && numberValue('#stopPrice', -1) >= 0;
     var position = numberValue('#singlePositionInput', 0);
     var leverage = numberValue('#leverageInput', 0);
-    var entry = numberValue('#entryPrice', 0);
-    var stop = numberValue('#stopPrice', 0);
-    var confirmed = exists('#riskConfirmed') && $('#riskConfirmed').checked;
     var messages = [];
     if (!positionValid) messages.push('请填写有效的单票仓位');
     else if (position > 15) messages.push('单票仓位需 ≤ 15%');
     if (!leverageValid) messages.push('请填写有效的杠杆率');
     else if (leverage > 20) messages.push('杠杆率需 ≤ 20%');
-    if (!assetValid || !budgetValid) messages.push('请填写有效的账户资产与风险预算');
-    if (!entryValid || !stopValid || entry <= stop) messages.push('买入价须高于有效止损价');
-    if (!confirmed) messages.push('尚未确认止损条件');
     var output = $('#riskValidation');
     if (output) {
       output.className = messages.length ? 'validation-message bad' : 'validation-message good';
       output.textContent = messages.length ? messages.join('；') : '风险校验通过';
     }
     return messages.length === 0;
-  }
-
-  function updateRiskCalculator() {
-    var asset = numberValue('#accountAsset', 0);
-    var budget = numberValue('#riskBudget', 0);
-    var entry = numberValue('#entryPrice', 0);
-    var stop = numberValue('#stopPrice', 0);
-    var maxLoss = asset * budget / 100;
-    var perShareLoss = entry - stop;
-    var shares = 0;
-    if (asset > 0 && budget > 0 && entry > 0 && perShareLoss > 0) {
-      var positionLimit = window.RongheRiskEngine ? window.RongheRiskEngine.calculatePositionLimit(asset, entry, 0.15) : asset * 0.15 / entry;
-      shares = Math.floor(Math.min(maxLoss / perShareLoss, positionLimit));
-    }
-    var amount = shares * entry;
-    var ratio = asset > 0 ? amount / asset * 100 : 0;
-    if (exists('#maxLossOutput')) $('#maxLossOutput').textContent = maxLoss > 0 ? maxLoss.toFixed(0) + ' 元' : '—';
-    if (exists('#positionSharesOutput')) $('#positionSharesOutput').textContent = shares > 0 ? shares + ' 股' : '请检查价格';
-    if (exists('#positionAmountOutput')) $('#positionAmountOutput').textContent = amount > 0 ? amount.toFixed(0) + ' 元' : '—';
-    if (exists('#positionRatioOutput')) $('#positionRatioOutput').textContent = ratio > 0 ? ratio.toFixed(1) + '%' : '—';
   }
 
   function daysSinceInput(selector) {
@@ -1188,9 +1158,7 @@
     if (exists('#undoReset')) $('#undoReset').addEventListener('click', undoLastReset);
     if (exists('#quickMode')) $('#quickMode').addEventListener('click', function () { setViewMode('quick', false); });
     if (exists('#fullMode')) $('#fullMode').addEventListener('click', function () { setViewMode('full', false); });
-    if (exists('#riskConfirmed')) $('#riskConfirmed').addEventListener('change', function () { state.summaryGenerated = false; updateWorkflow(); showStatus($('#riskConfirmed').checked ? '风险纪律已确认' : '风险纪律确认已取消'); });
     bindAll('#singlePositionInput,#leverageInput', 'input', function () { state.summaryGenerated = false; updateWorkflow(); });
-    bindAll('#accountAsset,#riskBudget,#entryPrice,#stopPrice', 'input', function () { updateRiskCalculator(); state.summaryGenerated = false; updateWorkflow(); scheduleAutoSave(); });
     bindAll('#weeklyRiskNote,#weeklyNextEvent', 'input', function () { state.summaryGenerated = false; updateWorkflow(); });
     if (exists('#autoLink')) $('#autoLink').addEventListener('change', function () { if ($('#autoLink').checked) { updateQuadrant(); showStatus('自动联动已开启'); } else showStatus('自动联动已关闭，可手动选择'); });
     bindAll('#stepNav [data-step]', 'click', function (event) {
@@ -1211,7 +1179,6 @@
     window.addEventListener('touchstart', releaseNavigationLock);
     setViewMode('full', true);
     updateVersionPanel();
-    updateRiskCalculator();
     updateQuadrant();
     updatePhaseCount();
     updateBehaviorCount();

@@ -133,7 +133,7 @@
 
     <section class="card role-card" id="role5"><div class="role-title"><span class="num">5</span><h2>组合结构与仓位饼图</h2></div><p class="role-intro">姿态先给出预设组合；再用四个滑杆微调，系统自动保持总仓位为 100%。</p><div class="preset-row"><button type="button" data-preset="attack">进攻组合</button><button type="button" data-preset="balance" class="active">均衡组合</button><button type="button" data-preset="defend">防御组合</button></div><div class="portfolio-tool"><div class="pie-wrap"><svg class="pie-chart" viewBox="0 0 120 120" role="img" aria-label="组合仓位饼图"><circle class="pie-track" cx="60" cy="60" r="45"/><circle id="pieBase" class="pie-segment" cx="60" cy="60" r="45" stroke="#28211b" transform="rotate(-90 60 60)"/><circle id="pieAttack" class="pie-segment" cx="60" cy="60" r="45" stroke="#b63b2b" transform="rotate(-90 60 60)"/><circle id="pieTactical" class="pie-segment" cx="60" cy="60" r="45" stroke="#b28a38" transform="rotate(-90 60 60)"/><circle id="pieCash" class="pie-segment" cx="60" cy="60" r="45" stroke="#b8afa1" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="31" fill="#f8f5ed"/><text id="pieLabel" x="60" y="58" text-anchor="middle" font-size="10" fill="#28211b">均衡组合</text><text x="60" y="72" text-anchor="middle" font-size="8" fill="#776f64">100%</text></svg></div><div class="allocation-list live-allocation"><div class="allocation-tier"><b>底仓</b><span id="allocBase">45%</span><p>长期复利</p></div><div class="allocation-tier"><b>进攻仓</b><span id="allocAttack">25%</span><p>景气弹性</p></div><div class="allocation-tier"><b>机动仓</b><span id="allocTactical">10%</span><p>机会捕捉</p></div><div class="allocation-tier"><b>现金</b><span id="allocCash">20%</span><p>流动性缓冲</p></div></div></div><div class="slider-panel"><h3>自定义仓位</h3><p class="slider-hint">拖动任意一项时，系统优先调整现金或底仓，使合计保持 100%。</p><label class="allocation-slider"><span>底仓</span><input type="range" min="0" max="100" step="1" value="45" data-allocation-slider="0"><output id="sliderValue0">45%</output></label><label class="allocation-slider"><span>进攻仓</span><input type="range" min="0" max="100" step="1" value="25" data-allocation-slider="1"><output id="sliderValue1">25%</output></label><label class="allocation-slider"><span>机动仓</span><input type="range" min="0" max="100" step="1" value="10" data-allocation-slider="2"><output id="sliderValue2">10%</output></label><label class="allocation-slider"><span>现金</span><input type="range" min="0" max="100" step="1" value="20" data-allocation-slider="3"><output id="sliderValue3">20%</output></label><div class="allocation-total">当前合计：<strong id="allocationTotal">100%</strong> · <span id="allocationStatus">组合有效</span></div></div><div class="role-note"><b>再平衡：</b>任意层级偏离目标区间超过 10 个百分点，或宏观姿态切换、估值区间改变时重新检查。</div></section>
 
-    <section class="card role-card" id="role6"><div class="role-title"><span class="num">6</span><h2>风险管理</h2></div><p class="role-intro">任何收益目标之前，先明确止损、集中度与杠杆边界。</p><div class="module-grid"><article class="module-item"><span class="eyebrow">STOP</span><h3>止损规则</h3><p>买入前写下触发条件；基本面走弱优先于价格跌幅，不在下跌后临时移动规则。</p></article><article class="module-item"><span class="eyebrow">POSITION</span><h3>单票上限</h3><p>任何单一标的不超过组合 15%，通过强制分散避免致命集中。</p><strong>≤ 15%</strong></article><article class="module-item"><span class="eyebrow">LEVERAGE</span><h3>杠杆阈值</h3><p>杠杆率不超过净资产 20%；牛市中不加杠杆也是风险纪律。</p><strong>≤ 20%</strong></article></div><div class="risk-inputs"><label>当前单票仓位 %<input id="singlePositionInput" type="number" inputmode="decimal" value="10" min="0" max="100" step="0.1"></label><label>当前杠杆率 %<input id="leverageInput" type="number" inputmode="decimal" value="0" min="0" max="100" step="0.1"></label><div class="validation-message" id="riskValidation">等待确认风险纪律</div></div><div class="risk-calculator"><h3>单笔仓位计算器</h3><div class="risk-calc-grid"><label>账户资产<input id="accountAsset" type="number" inputmode="decimal" value="100000" min="0" step="1000"></label><label>单笔风险上限 %<input id="riskBudget" type="number" inputmode="decimal" value="1" min="0.1" max="10" step="0.1"></label><label>计划买入价<input id="entryPrice" type="number" inputmode="decimal" value="20" min="0.01" step="0.01"></label><label>止损价<input id="stopPrice" type="number" inputmode="decimal" value="18" min="0" step="0.01"></label></div><div class="risk-output"><div>最大风险金额<b id="maxLossOutput">—</b></div><div>建议最大股数<b id="positionSharesOutput">—</b></div><div>建议买入金额<b id="positionAmountOutput">—</b></div><div>实际资产占比<b id="positionRatioOutput">—</b></div></div></div><label class="risk-confirm"><input id="riskConfirmed" type="checkbox"><span>我已写下本次交易的止损条件，并确认单票上限与杠杆阈值。</span></label></section>
+    <section class="card role-card" id="role6"><div class="role-title"><span class="num">6</span><h2>风险管理</h2></div><p class="role-intro">任何收益目标之前，先明确止损、集中度与杠杆边界。</p><div class="module-grid"><article class="module-item"><span class="eyebrow">STOP</span><h3>止损规则</h3><p>买入前写下触发条件；基本面走弱优先于价格跌幅，不在下跌后临时移动规则。</p></article><article class="module-item"><span class="eyebrow">POSITION</span><h3>单票上限</h3><p>任何单一标的不超过组合 15%，通过强制分散避免致命集中。</p><strong>≤ 15%</strong></article><article class="module-item"><span class="eyebrow">LEVERAGE</span><h3>杠杆阈值</h3><p>杠杆率不超过净资产 20%；牛市中不加杠杆也是风险纪律。</p><strong>≤ 20%</strong></article></div><div class="risk-inputs"><label>当前单票仓位 %<input id="singlePositionInput" type="number" inputmode="decimal" value="10" min="0" max="100" step="0.1"></label><label>当前杠杆率 %<input id="leverageInput" type="number" inputmode="decimal" value="0" min="0" max="100" step="0.1"></label><div class="validation-message" id="riskValidation">等待确认风险纪律</div></div></section>
 
     <section class="card role-card" id="role7"><div class="role-title"><span class="num">7</span><h2>行为自检与暂停机制</h2></div><p class="role-intro">五问均选择“是／不确定／否”；系统结合红旗行为计算风险，必要时暂停交易 24 小时。</p><div class="behavior-questions"><article class="behavior-question" data-behavior-question="1"><b>1. 我是在对事实做出反应，而不是对情绪做出反应？</b><div class="answer-row"><label><input id="behavior1Yes" type="radio" name="behavior1" value="yes" data-behavior-answer>是</label><label><input id="behavior1Unsure" type="radio" name="behavior1" value="unsure" data-behavior-answer>不确定</label><label><input id="behavior1No" type="radio" name="behavior1" value="no" data-behavior-answer>否</label></div></article><article class="behavior-question" data-behavior-question="2"><b>2. 这笔交易的逻辑，是我独立思考出来的吗？</b><div class="answer-row"><label><input id="behavior2Yes" type="radio" name="behavior2" value="yes" data-behavior-answer>是</label><label><input id="behavior2Unsure" type="radio" name="behavior2" value="unsure" data-behavior-answer>不确定</label><label><input id="behavior2No" type="radio" name="behavior2" value="no" data-behavior-answer>否</label></div></article><article class="behavior-question" data-behavior-question="3"><b>3. 如果这笔交易亏损 30%，我的总组合能承受吗？</b><div class="answer-row"><label><input id="behavior3Yes" type="radio" name="behavior3" value="yes" data-behavior-answer>是</label><label><input id="behavior3Unsure" type="radio" name="behavior3" value="unsure" data-behavior-answer>不确定</label><label><input id="behavior3No" type="radio" name="behavior3" value="no" data-behavior-answer>否</label></div></article><article class="behavior-question" data-behavior-question="4"><b>4. 我主动寻找过反对这笔交易的证据吗？</b><div class="answer-row"><label><input id="behavior4Yes" type="radio" name="behavior4" value="yes" data-behavior-answer>是</label><label><input id="behavior4Unsure" type="radio" name="behavior4" value="unsure" data-behavior-answer>不确定</label><label><input id="behavior4No" type="radio" name="behavior4" value="no" data-behavior-answer>否</label></div></article><article class="behavior-question" data-behavior-question="5"><b>5. 我写下了三个月内验证或证伪判断的事件吗？</b><div class="answer-row"><label><input id="behavior5Yes" type="radio" name="behavior5" value="yes" data-behavior-answer>是</label><label><input id="behavior5Unsure" type="radio" name="behavior5" value="unsure" data-behavior-answer>不确定</label><label><input id="behavior5No" type="radio" name="behavior5" value="no" data-behavior-answer>否</label></div></article></div><div class="red-flag-panel"><h3>红旗行为</h3><p>符合实际情况才勾选；两项以上会直接触发高风险。</p><label class="red-flag"><input id="redFlagFomo" type="checkbox" data-behavior-red="害怕错过而追涨">我因为害怕错过而追涨</label><label class="red-flag"><input id="redFlagAverage" type="checkbox" data-behavior-red="亏损后情绪化补仓">我因为亏损而不断补仓</label><label class="red-flag"><input id="redFlagConfirm" type="checkbox" data-behavior-red="只寻找支持证据">我只寻找支持自己判断的信息</label><label class="red-flag"><input id="redFlagNews" type="checkbox" data-behavior-red="受热门消息或他人观点影响">我主要受到热门消息或他人观点影响</label><label class="red-flag"><input id="redFlagEmotion" type="checkbox" data-behavior-red="情绪激动时决策">我正在情绪激动时决定交易</label></div><div class="behavior-result low" id="behaviorResult"><b id="behaviorRisk">等待完成五问</b><span id="behaviorAdvice">请先完成全部五问，再判断是否适合执行。</span><div class="behavior-pause" id="behaviorPause">暂停交易：至少等待 24 小时，再重新完成行为自检。</div></div><div class="role-note">五问已完成 <span class="status-count" id="behaviorCount">0</span> / 5 项；红旗行为 <span class="status-count" id="redFlagCount">0</span> 项。</div></section>
 
@@ -149,7 +149,6 @@
   <div class="mobile-bar" aria-label="移动端操作"><button type="button" id="previousStep">上一步</button><button type="button" id="mobileSummary">生成摘要</button><button type="button" id="nextStep" class="primary-step">下一步</button></div>
   <script src="core/risk-engine.js"></script>
   <script src="auth.js?v=0906b66"></script>
-  <script src="core/risk-panel.js?v=d8f1598"></script>
   <script>
 (function () {
   'use strict';
@@ -810,49 +809,19 @@
   function validateRisk() {
     var positionValid = validNumericInput('#singlePositionInput');
     var leverageValid = validNumericInput('#leverageInput');
-    var assetValid = validNumericInput('#accountAsset') && numberValue('#accountAsset', 0) > 0;
-    var budgetValid = validNumericInput('#riskBudget') && numberValue('#riskBudget', 0) > 0;
-    var entryValid = validNumericInput('#entryPrice') && numberValue('#entryPrice', 0) > 0;
-    var stopValid = validNumericInput('#stopPrice') && numberValue('#stopPrice', -1) >= 0;
     var position = numberValue('#singlePositionInput', 0);
     var leverage = numberValue('#leverageInput', 0);
-    var entry = numberValue('#entryPrice', 0);
-    var stop = numberValue('#stopPrice', 0);
-    var confirmed = exists('#riskConfirmed') && $('#riskConfirmed').checked;
     var messages = [];
     if (!positionValid) messages.push('请填写有效的单票仓位');
     else if (position > 15) messages.push('单票仓位需 ≤ 15%');
     if (!leverageValid) messages.push('请填写有效的杠杆率');
     else if (leverage > 20) messages.push('杠杆率需 ≤ 20%');
-    if (!assetValid || !budgetValid) messages.push('请填写有效的账户资产与风险预算');
-    if (!entryValid || !stopValid || entry <= stop) messages.push('买入价须高于有效止损价');
-    if (!confirmed) messages.push('尚未确认止损条件');
     var output = $('#riskValidation');
     if (output) {
       output.className = messages.length ? 'validation-message bad' : 'validation-message good';
       output.textContent = messages.length ? messages.join('；') : '风险校验通过';
     }
     return messages.length === 0;
-  }
-
-  function updateRiskCalculator() {
-    var asset = numberValue('#accountAsset', 0);
-    var budget = numberValue('#riskBudget', 0);
-    var entry = numberValue('#entryPrice', 0);
-    var stop = numberValue('#stopPrice', 0);
-    var maxLoss = asset * budget / 100;
-    var perShareLoss = entry - stop;
-    var shares = 0;
-    if (asset > 0 && budget > 0 && entry > 0 && perShareLoss > 0) {
-      var positionLimit = window.RongheRiskEngine ? window.RongheRiskEngine.calculatePositionLimit(asset, entry, 0.15) : asset * 0.15 / entry;
-      shares = Math.floor(Math.min(maxLoss / perShareLoss, positionLimit));
-    }
-    var amount = shares * entry;
-    var ratio = asset > 0 ? amount / asset * 100 : 0;
-    if (exists('#maxLossOutput')) $('#maxLossOutput').textContent = maxLoss > 0 ? maxLoss.toFixed(0) + ' 元' : '—';
-    if (exists('#positionSharesOutput')) $('#positionSharesOutput').textContent = shares > 0 ? shares + ' 股' : '请检查价格';
-    if (exists('#positionAmountOutput')) $('#positionAmountOutput').textContent = amount > 0 ? amount.toFixed(0) + ' 元' : '—';
-    if (exists('#positionRatioOutput')) $('#positionRatioOutput').textContent = ratio > 0 ? ratio.toFixed(1) + '%' : '—';
   }
 
   function daysSinceInput(selector) {
@@ -1341,9 +1310,7 @@
     if (exists('#undoReset')) $('#undoReset').addEventListener('click', undoLastReset);
     if (exists('#quickMode')) $('#quickMode').addEventListener('click', function () { setViewMode('quick', false); });
     if (exists('#fullMode')) $('#fullMode').addEventListener('click', function () { setViewMode('full', false); });
-    if (exists('#riskConfirmed')) $('#riskConfirmed').addEventListener('change', function () { state.summaryGenerated = false; updateWorkflow(); showStatus($('#riskConfirmed').checked ? '风险纪律已确认' : '风险纪律确认已取消'); });
     bindAll('#singlePositionInput,#leverageInput', 'input', function () { state.summaryGenerated = false; updateWorkflow(); });
-    bindAll('#accountAsset,#riskBudget,#entryPrice,#stopPrice', 'input', function () { updateRiskCalculator(); state.summaryGenerated = false; updateWorkflow(); scheduleAutoSave(); });
     bindAll('#weeklyRiskNote,#weeklyNextEvent', 'input', function () { state.summaryGenerated = false; updateWorkflow(); });
     if (exists('#autoLink')) $('#autoLink').addEventListener('change', function () { if ($('#autoLink').checked) { updateQuadrant(); showStatus('自动联动已开启'); } else showStatus('自动联动已关闭，可手动选择'); });
     bindAll('#stepNav [data-step]', 'click', function (event) {
@@ -1364,7 +1331,6 @@
     window.addEventListener('touchstart', releaseNavigationLock);
     setViewMode('full', true);
     updateVersionPanel();
-    updateRiskCalculator();
     updateQuadrant();
     updatePhaseCount();
     updateBehaviorCount();
