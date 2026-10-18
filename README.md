@@ -21,13 +21,15 @@ npm test
 
 | 文件 | 说明 |
 | --- | --- |
-| `index.html` | 网页版（自包含单文件，双击或在浏览器打开即用），已部署到 GitHub Pages |
+| `index.html` | 网页版（自包含单文件，双击或在浏览器打开即用）；新的 Ronghe Pages 地址尚未配置 |
 | `交易决策研究室-小红书小工具-v2.3.0.zip` | 小红书小工具版（符合小红书 minitool 规范，zip 根目录为 `index.html` + `app.js`，上传至小红书创服平台发布） |
 | `app.js` | 小工具版源码（与 zip 内一致） |
 
 ## 网页版在线地址
 
-https://shuyaolu93.github.io/trading-decision-desk/
+Ronghe 的 GitHub Pages 尚未配置。配置完成后预计地址为：
+
+https://shuyaolu93.github.io/ronghe/
 
 ## 功能模块
 
