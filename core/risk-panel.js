@@ -44,12 +44,24 @@
     var result = el('div', { id: 'rongheRiskResult', class: 'ronghe-risk-result' }, '等待检查');
     actions.appendChild(button); actions.appendChild(result); panel.appendChild(actions);
     role.appendChild(panel);
-    button.addEventListener('click', function () {
+    button.addEventListener('click', async function () {
       var n = function (id) { return Number(document.getElementById(id).value); };
       try {
-        var order = window.RongheRiskEngine.evaluateOrder({ side: 'buy', quantity: n('rongheQuantity'), price: n('ronghePrice'), equity: n('rongheEquity'), currentPosition: n('ronghePosition'), maxPositionPct: 0.15, highWaterMark: n('rongheHighWater'), maxDrawdownPct: n('rongheDrawdown') / 100 });
+        var riskInput = { side: 'buy', quantity: n('rongheQuantity'), price: n('ronghePrice'), equity: n('rongheEquity'), currentPosition: n('ronghePosition'), maxPositionPct: 0.15, highWaterMark: n('rongheHighWater'), maxDrawdownPct: n('rongheDrawdown') / 100 };
+        var order;
+        var remote = true;
+        try {
+          var response = await fetch('https://ronghe-risk-free.shuyaolu93.workers.dev/api/risk/check', {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(riskInput)
+          });
+          if (!response.ok) throw new Error('remote risk service returned ' + response.status);
+          order = await response.json();
+        } catch (remoteError) {
+          remote = false;
+          order = window.RongheRiskEngine.evaluateOrder(riskInput);
+        }
         var stress = window.RongheRiskEngine.stressTest({ equity: n('rongheEquity'), positions: [{ quantity: n('ronghePosition'), price: n('ronghePrice') }] }, -n('rongheShock') / 100);
-        var text = '裁决：' + order.decision.toUpperCase() + ' · 允许数量：' + order.quantity.toFixed(0) + ' · 压力后权益：' + stress.equityAfter.toFixed(0) + ' 元';
+        var text = '裁决：' + order.decision.toUpperCase() + ' · 允许数量：' + Number(order.quantity).toFixed(0) + ' · 压力后权益：' + stress.equityAfter.toFixed(0) + ' 元 · ' + (remote ? '云端风控' : '本地回退');
         result.className = 'ronghe-risk-result ' + (order.decision === 'allow' ? 'good' : order.decision === 'resize' ? 'warn' : 'bad');
         result.textContent = text + (order.reasons.length ? ' · ' + order.reasons.join('；') : '');
         recordAudit({ decision: order.decision, quantity: order.quantity, stress: stress });
