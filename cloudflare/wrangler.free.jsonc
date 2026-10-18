@@ -2,5 +2,12 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ronghe-risk-free",
   "main": "free-worker.js",
-  "compatibility_date": "2026-10-18"
+  "compatibility_date": "2026-10-18",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ronghe-db",
+      "database_id": "7a75c638-9544-48c0-9ff5-778888884dfa"
+    }
+  ]
 }

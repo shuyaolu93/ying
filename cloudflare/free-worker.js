@@ -59,19 +59,48 @@ function qualityReport(bars) {
 }
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" } });
+  return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" } });
+}
+
+async function saveDecision(db, body, result) {
+  if (!db) return false;
+  await db.prepare("INSERT INTO risk_decisions (symbol, side, requested_quantity, allowed_quantity, price, equity, decision, reasons) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(String(body.symbol || "UNKNOWN"), String(body.side || "buy"), Number(body.quantity), Number(result.quantity), Number(body.price), Number(body.equity), result.decision, JSON.stringify(result.reasons || []))
+    .run();
+  return true;
+}
+
+async function saveQuality(db, result) {
+  if (!db) return false;
+  await db.prepare("INSERT INTO data_quality_checks (score, status, block_new_entries, issues, warnings) VALUES (?, ?, ?, ?, ?)")
+    .bind(result.score, result.status, result.block_new_entries ? 1 : 0, JSON.stringify(result.issues || []), JSON.stringify(result.warnings || []))
+    .run();
+  return true;
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type", "access-control-allow-methods": "GET,POST,OPTIONS" } });
     const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "ronghe-free-worker" });
+    if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB) });
+    if (request.method === "GET" && url.pathname === "/api/risk/history") {
+      if (!env.DB) return json({ error: "database_not_configured" }, 503);
+      const { results } = await env.DB.prepare("SELECT * FROM risk_decisions ORDER BY id DESC LIMIT 50").all();
+      return json({ results });
+    }
     if (request.method !== "POST") return json({ error: "not_found" }, 404);
     try {
       const body = await request.json();
-      if (url.pathname === "/api/risk/check") return json(evaluateOrder(body));
-      if (url.pathname === "/api/analysis/quality") return json(qualityReport(body.bars));
+      if (url.pathname === "/api/risk/check") {
+        const result = evaluateOrder(body);
+        result.persisted = await saveDecision(env.DB, body, result);
+        return json(result);
+      }
+      if (url.pathname === "/api/analysis/quality") {
+        const result = qualityReport(body.bars);
+        result.persisted = await saveQuality(env.DB, result);
+        return json(result);
+      }
       return json({ error: "not_found" }, 404);
     } catch (error) {
       return json({ error: "invalid_request", message: error.message }, 400);
