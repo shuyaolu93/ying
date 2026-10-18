@@ -139,6 +139,7 @@
     <p class="disclaimer">本工具用于信息整理与风险纪律，不构成任何投资建议。宏观指标与市场信息请以官方最新发布数据为准。</p>
   </main>
   <div class="mobile-bar" aria-label="移动端操作"><button type="button" id="previousStep">上一步</button><button type="button" id="mobileSummary">生成摘要</button><button type="button" id="nextStep" class="primary-step">下一步</button></div>
+  <script src="core/risk-engine.js"></script>
   <script>
 (function () {
   'use strict';
@@ -833,7 +834,8 @@
     var perShareLoss = entry - stop;
     var shares = 0;
     if (asset > 0 && budget > 0 && entry > 0 && perShareLoss > 0) {
-      shares = Math.floor(Math.min(maxLoss / perShareLoss, asset * 0.15 / entry));
+      var positionLimit = window.RongheRiskEngine ? window.RongheRiskEngine.calculatePositionLimit(asset, entry, 0.15) : asset * 0.15 / entry;
+      shares = Math.floor(Math.min(maxLoss / perShareLoss, positionLimit));
     }
     var amount = shares * entry;
     var ratio = asset > 0 ? amount / asset * 100 : 0;

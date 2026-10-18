@@ -691,7 +691,8 @@
     var perShareLoss = entry - stop;
     var shares = 0;
     if (asset > 0 && budget > 0 && entry > 0 && perShareLoss > 0) {
-      shares = Math.floor(Math.min(maxLoss / perShareLoss, asset * 0.15 / entry));
+      var positionLimit = window.RongheRiskEngine ? window.RongheRiskEngine.calculatePositionLimit(asset, entry, 0.15) : asset * 0.15 / entry;
+      shares = Math.floor(Math.min(maxLoss / perShareLoss, positionLimit));
     }
     var amount = shares * entry;
     var ratio = asset > 0 ? amount / asset * 100 : 0;
