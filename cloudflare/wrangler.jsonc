@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ronghe-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-18",
+  "containers": [
+    {
+      "class_name": "RongheContainer",
+      "image": "../Dockerfile",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RONGHE_CONTAINER",
+        "class_name": "RongheContainer"
+      }
+    ]
+  },
+  "exports": {
+    "RongheContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}

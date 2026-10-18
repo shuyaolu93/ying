@@ -7,6 +7,7 @@
 - 原始版本保存在 `original-lianghua` 分支和 `v2.3.0-original` 标签。
 - `core/risk-engine.js` 提供仓位上限、回撤熔断、减仓放行、无效价格拒绝和压力测试。
 - `backend/` 已接入两个仓库的 Python 后端：TradeHelper 的分析/数据质量/策略/回测模块，以及 RiskGuard 的风控/持久化/审计模块。
+- `cloudflare/` 提供 Cloudflare Worker + Container 部署配置。
 - 网页版角色台的单笔仓位计算器已接入风控核心。
 - `tests/risk-engine.test.js` 提供 Node.js 内置测试，不依赖第三方测试框架。
 
@@ -17,6 +18,8 @@ python3.12 backend/server.py
 ```
 
 后端提供 `/api/analysis/quality` 和 `/api/risk/check`。风控状态及审计记录保存于 `backend/data/`。GitHub Pages 只能运行前端，生产使用时需要把后端部署到单独的服务器或容器，具体说明见 [`backend/README.md`](backend/README.md)。
+
+Cloudflare 部署配置见 [`cloudflare/README.md`](cloudflare/README.md)。Cloudflare Containers 需要 Workers Paid 方案。
 
 运行测试：
 

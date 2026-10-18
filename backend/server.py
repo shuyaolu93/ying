@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -159,8 +160,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    host = "127.0.0.1"
-    port = 8787
+    host = os.getenv("RONGHE_HOST", "0.0.0.0")
+    port = int(os.getenv("RONGHE_PORT", "8787"))
     print(f"Ronghe backend listening on http://{host}:{port}")
     ThreadingHTTPServer((host, port), Handler).serve_forever()
 
