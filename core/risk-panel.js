@@ -52,8 +52,9 @@
         var remote = true;
         try {
           var response = await fetch('https://ronghe-risk-free.shuyaolu93.workers.dev/api/risk/check', {
-            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(riskInput)
+            method: 'POST', headers: { 'content-type': 'application/json', ...(window.RongheAuth && window.RongheAuth.getToken() ? { authorization: 'Bearer ' + window.RongheAuth.getToken() } : {}) }, body: JSON.stringify(riskInput)
           });
+          if (response.status === 401 || response.status === 403) { result.className = 'ronghe-risk-result bad'; result.textContent = '请先登录并兑换有效卡密，再使用云端风控'; if (window.RongheAuth) window.RongheAuth.open(); return; }
           if (!response.ok) throw new Error('remote risk service returned ' + response.status);
           order = await response.json();
         } catch (remoteError) {

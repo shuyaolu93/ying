@@ -94,6 +94,11 @@
     @media(max-width:820px){.scenario-sliders,.scenario-result{grid-template-columns:repeat(2,1fr)}.version-grid{grid-template-columns:repeat(3,1fr)}}
     @media(max-width:520px){.view-switch{width:100%;margin-top:7px}.view-switch button{flex:1}.rationale-head,.scenario-head{display:block}.confidence-meter{width:100%;margin-top:9px}.rationale-grid{grid-template-columns:1fr}.scenario-sliders,.scenario-result{grid-template-columns:1fr 1fr}.version-grid{grid-template-columns:1fr 1fr}.scenario-lab{padding:16px}.scenario-presets button{flex:1}}
   </style>
+  <style>
+    .account-button{border:1px solid #d6cdbb;border-radius:6px;background:transparent;color:var(--ink);padding:7px 11px;font:700 .72rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;cursor:pointer}.account-button.active{border-color:var(--red);color:var(--red)}
+    .auth-overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(24,21,17,.7)}.auth-overlay[hidden]{display:none}.auth-panel{position:relative;width:min(100%,430px);padding:24px;background:#f8f5ed;border:1px solid #d9d1c2;border-top:3px solid var(--red);box-shadow:0 20px 60px #18151155}.auth-panel h2{margin:0 0 5px;font:700 1.35rem "Songti SC","STSong",serif}.auth-subtitle{margin:0 0 15px;color:var(--muted);font-size:.8rem}.auth-panel label{display:block;margin-top:10px;color:var(--muted);font-size:.76rem}.auth-panel input{display:block;width:100%;margin-top:5px;padding:10px;border:1px solid var(--line);background:#fffdf7;color:var(--ink);font-size:16px}.auth-close{position:absolute;right:12px;top:9px;border:0;background:transparent;font-size:25px;color:var(--muted);cursor:pointer}.auth-actions{display:flex;gap:8px;margin-top:14px}.auth-actions button{flex:1}.auth-divider{border-top:1px dotted var(--line);margin:18px 0 5px}.auth-redeem{width:100%;margin-top:12px}.auth-logout{width:100%;margin-top:8px;border:0;background:transparent;color:var(--muted);padding:8px}.auth-note{min-height:22px;margin-top:10px;font-size:.78rem}.auth-note.good{color:var(--green)}.auth-note.bad{color:var(--red)}
+    @media(max-width:520px){.account-button{font-size:.66rem;padding:6px 8px}.auth-panel{padding:20px 16px}}
+  </style>
 </head>
 <body>
   <main class="shell">
@@ -143,6 +148,7 @@
   </main>
   <div class="mobile-bar" aria-label="移动端操作"><button type="button" id="previousStep">上一步</button><button type="button" id="mobileSummary">生成摘要</button><button type="button" id="nextStep" class="primary-step">下一步</button></div>
   <script src="core/risk-engine.js"></script>
+  <script src="auth.js?v=1d0e017"></script>
   <script src="core/risk-panel.js?v=d8f1598"></script>
   <script>
 (function () {
