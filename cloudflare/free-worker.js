@@ -82,6 +82,7 @@ export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type", "access-control-allow-methods": "GET,POST,OPTIONS" } });
     const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB), endpoints: { health: "/health", risk_check: "/api/risk/check", risk_history: "/api/risk/history", quality: "/api/analysis/quality" } });
     if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB) });
     if (request.method === "GET" && url.pathname === "/api/risk/history") {
       if (!env.DB) return json({ error: "database_not_configured" }, 503);
