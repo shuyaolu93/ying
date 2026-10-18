@@ -862,7 +862,7 @@
       if (exists('#scenarioBase')) $('#scenarioBase').textContent = state.scenarioValues[1].toFixed(2) + ' ' + scenarioUnit;
       if (exists('#scenarioBull')) $('#scenarioBull').textContent = state.scenarioValues[2].toFixed(2) + ' ' + scenarioUnit;
     }
-    setViewMode(state.viewMode, true); runScenario(); updateVersionPanel(); updatePhaseCount(); updateBehaviorCount(); updateWeeklyCount(); updateDataFreshness(); updateWorkflow();
+    setViewMode('full', true); runScenario(); updateVersionPanel(); updatePhaseCount(); updateBehaviorCount(); updateWeeklyCount(); updateDataFreshness(); updateWorkflow();
   }
 
   function setStoredData(key, value) {
@@ -978,12 +978,11 @@
   }
 
   function setViewMode(mode, silent) {
-    state.viewMode = mode === 'quick' ? 'quick' : 'full';
-    document.body.classList.toggle('quick-mode', state.viewMode === 'quick');
-    if (exists('#quickMode')) $('#quickMode').classList.toggle('active', state.viewMode === 'quick');
-    if (exists('#fullMode')) $('#fullMode').classList.toggle('active', state.viewMode === 'full');
+    state.viewMode = 'full';
+    document.body.classList.remove('quick-mode');
+    if (exists('#fullMode')) $('#fullMode').classList.add('active');
     setActiveRole(state.activeRole || 1);
-    if (!silent) { scheduleAutoSave(); showStatus(state.viewMode === 'quick' ? '已进入快速模式，仅显示当前模块' : '已进入完整研究模式'); }
+    if (!silent) { scheduleAutoSave(); showStatus('已进入完整研究模式'); }
   }
 
   function setActiveRole(number) {
@@ -1156,7 +1155,6 @@
     if (exists('#resetCurrent')) $('#resetCurrent').addEventListener('click', resetCurrentRole);
     if (exists('#resetAll')) $('#resetAll').addEventListener('click', resetAllRoles);
     if (exists('#undoReset')) $('#undoReset').addEventListener('click', undoLastReset);
-    if (exists('#quickMode')) $('#quickMode').addEventListener('click', function () { setViewMode('quick', false); });
     if (exists('#fullMode')) $('#fullMode').addEventListener('click', function () { setViewMode('full', false); });
     bindAll('#singlePositionInput,#leverageInput', 'input', function () { state.summaryGenerated = false; updateWorkflow(); });
     bindAll('#weeklyRiskNote,#weeklyNextEvent', 'input', function () { state.summaryGenerated = false; updateWorkflow(); });

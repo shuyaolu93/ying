@@ -107,9 +107,9 @@
       <div class="live-pill"><span class="live-dot"></span><span>交易规则速查卡</span></div>
     </header>
 
-    <div class="control-strip" aria-label="全局操作"><button type="button" id="resetCurrent">重置当前模块</button><button type="button" id="resetAll" class="danger">重置全部</button><button type="button" id="undoReset" disabled>撤销上次重置</button><div class="view-switch" aria-label="使用模式"><button type="button" id="quickMode">快速模式</button><button type="button" id="fullMode" class="active">完整研究</button></div><span class="storage-state" id="storageState">自动保存准备中</span></div>
+    <div class="control-strip" aria-label="全局操作"><button type="button" id="resetCurrent">重置当前模块</button><button type="button" id="resetAll" class="danger">重置全部</button><button type="button" id="undoReset" disabled>撤销上次重置</button><div class="view-switch" aria-label="使用模式"><button type="button" id="fullMode" class="active" style="display:none" aria-hidden="true" tabindex="-1">完整研究</button></div><span class="storage-state" id="storageState">自动保存准备中</span></div>
     <nav class="step-nav" id="stepNav" aria-label="模块导航"><a href="#role1" data-step="1" class="active">1 宏观</a><a href="#role2" data-step="2">2 姿态</a><a href="#role3" data-step="3">3 估值</a><a href="#role4" data-step="4">4 单票</a><a href="#role5" data-step="5">5 组合</a><a href="#role6" data-step="6">6 风险</a><a href="#role7" data-step="7">7 行为</a><a href="#role8" data-step="8">8 周复盘</a></nav>
-    <section class="card overview" id="decisionDashboard"><div class="overview-head"><div><h2>今日决策总览</h2><p>第 1–7 模块实时联动到这里，按顺序补齐缺项。</p></div><span class="freshness" id="overallStatus">待完善</span></div><div class="overview-grid"><div class="overview-item"><span>宏观象限</span><b id="overviewMacro">坐标原点</b></div><div class="overview-item"><span>决策姿态</span><b id="overviewPosture">均衡姿态</b></div><div class="overview-item"><span>估值结论</span><b id="overviewValuation">等待计算</b></div><div class="overview-item"><span>组合仓位</span><b id="overviewAllocation">45/25/10/20</b></div><div class="overview-item"><span>风险状态</span><b id="overviewRisk">未确认</b></div><div class="overview-item"><span>完成度</span><b id="overviewProgress">0 / 7</b></div></div><div class="overview-next" id="overviewNext">下一步：更新宏观数据。</div><p class="quick-mode-note" id="quickModeNote">快速模式只显示当前模块；可用顶部导航或底部“下一步”继续。</p><div class="conflict-panel" id="conflictPanel" role="alert"></div></section>
+    <section class="card overview" id="decisionDashboard"><div class="overview-head"><div><h2>今日决策总览</h2><p>第 1–7 模块实时联动到这里，按顺序补齐缺项。</p></div><span class="freshness" id="overallStatus">待完善</span></div><div class="overview-grid"><div class="overview-item"><span>宏观象限</span><b id="overviewMacro">坐标原点</b></div><div class="overview-item"><span>决策姿态</span><b id="overviewPosture">均衡姿态</b></div><div class="overview-item"><span>估值结论</span><b id="overviewValuation">等待计算</b></div><div class="overview-item"><span>组合仓位</span><b id="overviewAllocation">45/25/10/20</b></div><div class="overview-item"><span>风险状态</span><b id="overviewRisk">未确认</b></div><div class="overview-item"><span>完成度</span><b id="overviewProgress">0 / 7</b></div></div><div class="overview-next" id="overviewNext">下一步：更新宏观数据。</div><div class="conflict-panel" id="conflictPanel" role="alert"></div></section>
 
     <section class="card scenario-lab" id="scenarioLab"><div class="scenario-head"><div><h2>情景模拟器</h2><p>在当前数据上模拟变化，不修改第 1–7 模块的真实输入与决策记录。</p></div><span class="simulation-badge">SIMULATION · 仅推演</span></div><div class="scenario-presets"><button type="button" data-scenario-preset="slowdown">增长放缓</button><button type="button" data-scenario-preset="easing">流动性宽松</button><button type="button" data-scenario-preset="tightening">收紧冲击</button><button type="button" data-scenario-preset="reset">归零模拟</button></div><div class="scenario-sliders"><label class="scenario-control"><span>PMI 变化<output id="simPmiValue">0.0</output></span><input id="simPmi" type="range" min="-3" max="3" step="0.1" value="0"></label><label class="scenario-control"><span>社融增速变化<output id="simSocialValue">0.0%</output></span><input id="simSocial" type="range" min="-2" max="2" step="0.1" value="0"></label><label class="scenario-control"><span>M2 增速变化<output id="simM2Value">0.0%</output></span><input id="simM2" type="range" min="-2" max="2" step="0.1" value="0"></label><label class="scenario-control"><span>国债收益率变化<output id="simYieldValue">0bp</output></span><input id="simYield" type="range" min="-80" max="80" step="5" value="0"></label></div><div class="scenario-result" aria-live="polite"><div><span>模拟坐标</span><b id="simCoordinate">X 0 / Y 0</b></div><div><span>模拟象限</span><b id="simQuadrant">宏观坐标原点</b></div><div><span>模拟姿态</span><b id="simPosture">均衡姿态</b></div><div><span>模拟仓位</span><b id="simAllocation">45 / 25 / 10 / 20</b></div></div><p class="scenario-note" id="simExplanation">当前没有施加情景变化。模拟结果只依据四项宏观变量，不会覆盖真实数据。</p></section>
 
@@ -1014,7 +1014,7 @@
       if (exists('#scenarioBase')) $('#scenarioBase').textContent = state.scenarioValues[1].toFixed(2) + ' ' + scenarioUnit;
       if (exists('#scenarioBull')) $('#scenarioBull').textContent = state.scenarioValues[2].toFixed(2) + ' ' + scenarioUnit;
     }
-    setViewMode(state.viewMode, true); runScenario(); updateVersionPanel(); updatePhaseCount(); updateBehaviorCount(); updateWeeklyCount(); updateDataFreshness(); updateWorkflow();
+    setViewMode('full', true); runScenario(); updateVersionPanel(); updatePhaseCount(); updateBehaviorCount(); updateWeeklyCount(); updateDataFreshness(); updateWorkflow();
   }
 
   function setStoredData(key, value) {
@@ -1130,12 +1130,11 @@
   }
 
   function setViewMode(mode, silent) {
-    state.viewMode = mode === 'quick' ? 'quick' : 'full';
-    document.body.classList.toggle('quick-mode', state.viewMode === 'quick');
-    if (exists('#quickMode')) $('#quickMode').classList.toggle('active', state.viewMode === 'quick');
-    if (exists('#fullMode')) $('#fullMode').classList.toggle('active', state.viewMode === 'full');
+    state.viewMode = 'full';
+    document.body.classList.remove('quick-mode');
+    if (exists('#fullMode')) $('#fullMode').classList.add('active');
     setActiveRole(state.activeRole || 1);
-    if (!silent) { scheduleAutoSave(); showStatus(state.viewMode === 'quick' ? '已进入快速模式，仅显示当前模块' : '已进入完整研究模式'); }
+    if (!silent) { scheduleAutoSave(); showStatus('已进入完整研究模式'); }
   }
 
   function setActiveRole(number) {
@@ -1308,7 +1307,6 @@
     if (exists('#resetCurrent')) $('#resetCurrent').addEventListener('click', resetCurrentRole);
     if (exists('#resetAll')) $('#resetAll').addEventListener('click', resetAllRoles);
     if (exists('#undoReset')) $('#undoReset').addEventListener('click', undoLastReset);
-    if (exists('#quickMode')) $('#quickMode').addEventListener('click', function () { setViewMode('quick', false); });
     if (exists('#fullMode')) $('#fullMode').addEventListener('click', function () { setViewMode('full', false); });
     bindAll('#singlePositionInput,#leverageInput', 'input', function () { state.summaryGenerated = false; updateWorkflow(); });
     bindAll('#weeklyRiskNote,#weeklyNextEvent', 'input', function () { state.summaryGenerated = false; updateWorkflow(); });
