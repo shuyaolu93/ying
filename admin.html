@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RONGHE 卡密后台</title>
+  <style>
+    body{margin:0;background:#f4efe5;color:#241f1a;font:16px system-ui,-apple-system,sans-serif}.wrap{max-width:720px;margin:48px auto;padding:24px;background:#fffaf0;border:1px solid #d8cbb6;box-shadow:0 12px 30px #241f1a12}h1{margin-top:0}label{display:block;margin:14px 0 6px}input,button{box-sizing:border-box;width:100%;padding:11px;border:1px solid #b9aa94;background:white;font:inherit}button{margin-top:18px;background:#241f1a;color:white;cursor:pointer}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.note{min-height:24px;margin-top:14px}.good{color:#176b42}.bad{color:#a22d2d}pre{white-space:pre-wrap;background:#241f1a;color:#fffaf0;padding:16px;line-height:1.7}.back{display:inline-block;margin-top:18px;color:#765d3d}@media(max-width:600px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>RONGHE 卡密后台</h1>
+    <p>只在你自己的管理设备上使用。管理密钥不会保存到网页。</p>
+    <label for="secret">管理密钥</label>
+    <input id="secret" type="password" autocomplete="off" placeholder="输入 Cloudflare ADMIN_SECRET">
+    <div class="grid">
+      <div><label for="days">有效天数</label><input id="days" type="number" min="1" value="30"></div>
+      <div><label for="count">生成数量</label><input id="count" type="number" min="1" max="100" value="1"></div>
+    </div>
+    <button id="generate">生成卡密</button>
+    <div id="note" class="note"></div>
+    <pre id="result">生成后的卡密只在这里显示，请及时复制保存。</pre>
+    <a class="back" href="./">返回工具</a>
+  </main>
+  <script>
+    const API='https://ronghe-risk-free.shuyaolu93.workers.dev';
+    const $=id=>document.getElementById(id);
+    $('generate').onclick=async()=>{
+      const note=$('note'), button=$('generate'); note.className='note'; note.textContent='正在生成…'; button.disabled=true;
+      try{
+        const r=await fetch(API+'/api/admin/activation-codes',{method:'POST',headers:{'content-type':'application/json','x-admin-secret':$('secret').value},body:JSON.stringify({days:Number($('days').value),count:Number($('count').value)})});
+        const d=await r.json(); if(!r.ok) throw new Error(d.message||d.error||'生成失败');
+        $('result').textContent=d.codes.join('\n'); note.className='note good'; note.textContent='生成成功，请复制并妥善保存。';
+      }catch(e){note.className='note bad';note.textContent=e.message}
+      finally{button.disabled=false}
+    };
+  </script>
+</body>
+</html>
