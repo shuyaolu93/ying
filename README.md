@@ -1,4 +1,19 @@
-# 交易决策研究室（Trading Decision Desk）
+# Ronghe 融合交易决策台（Trading Decision Desk）
+
+> 本仓库以 Lianghua 的前端角色台为基础，逐步吸收 TradeHelper 的数据质量与测试思路，以及 RiskGuard 的确定性风控边界。当前仍是个人研究与复盘工具，不连接真实资金，也不构成投资建议。
+
+## 当前融合状态
+
+- 原始版本保存在 `original-lianghua` 分支和 `v2.3.0-original` 标签。
+- `core/risk-engine.js` 提供仓位上限、回撤熔断、减仓放行、无效价格拒绝和压力测试。
+- 网页版角色台的单笔仓位计算器已接入风控核心。
+- `tests/risk-engine.test.js` 提供 Node.js 内置测试，不依赖第三方测试框架。
+
+运行测试：
+
+```bash
+npm test
+```
 
 一个面向个人投资者的交易决策工作台：从宏观象限 → 决策姿态 → 估值 → 单票 → 组合 → 风险 → 行为 → 周复盘，全流程引导记录交易决策，并自动生成决策摘要。
 
