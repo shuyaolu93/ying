@@ -117,7 +117,7 @@ async function saveQuality(db, result) {
 
 export default {
   async fetch(request, env) {
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization", "access-control-allow-methods": "GET,POST,OPTIONS" } });
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization, x-admin-secret", "access-control-allow-methods": "GET,POST,OPTIONS" } });
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/") return Response.redirect("https://shuyaolu93.github.io/ronghe/", 302);
     if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB) });
