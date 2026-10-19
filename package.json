@@ -5,7 +5,7 @@
   "description": "Trading decision desk with deterministic risk controls",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "test:browser": "node --test tests/browser-regression.cjs"
+    "test:browser": "node --test tests/browser-free.test.cjs"
   },
   "devDependencies": { "playwright": "1.62.1" }
 }

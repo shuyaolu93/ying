@@ -138,29 +138,11 @@
     }
   </style>
 </head>
-<body class="auth-gated">
-  <section class="book-cover" id="bookCover" aria-label="登录封面">
-    <div class="book-cover-inner">
-      <div>
-        <div class="cover-kicker">RONGHE · DECISION DESK</div>
-        <h1 class="cover-title">交易<br>决策研究室</h1>
-        <p class="cover-subtitle">完整角色卡 · 私人研究本</p>
-        <div class="cover-rule"></div>
-        <p class="cover-motto">规则先于情绪。<br>登录后，开启你的完整研究桌面。</p>
-        <form class="cover-form" id="coverAuthForm">
-          <label>邮箱<input id="coverEmail" type="email" autocomplete="email" placeholder="name@example.com" required></label>
-          <label>密码<input id="coverPassword" type="password" autocomplete="current-password" placeholder="至少 8 位" required></label>
-          <div class="cover-actions"><button type="submit" id="coverLogin">登录进入</button><button type="button" id="coverRegister">注册账户</button></div>
-          <button type="button" id="coverAccount" class="secondary">账户与卡密</button><div class="cover-note" id="coverNote" aria-live="polite"></div>
-        </form>
-      </div>
-      <div class="cover-footer"><span>PRIVATE RESEARCH EDITION</span><span>NO. 01</span></div>
-    </div>
-  </section>
+<body>
   <main class="shell">
     <header class="topbar">
       <div class="brand"><div class="mark">策</div><div><h1>交易决策研究室</h1><p>DECISION DESK · 规则先于情绪</p></div></div>
-      <div class="live-pill"><span class="live-dot"></span><span>交易规则速查卡</span></div>
+      <div class="live-pill"><span class="live-dot"></span><span>免费公开版 · 数据仅保存在此浏览器</span></div>
     </header>
 
     <div class="control-strip" aria-label="全局操作"><button type="button" id="resetCurrent">重置当前模块</button><button type="button" id="resetAll" class="danger">重置全部</button><button type="button" id="undoReset" disabled>撤销上次重置</button><div class="view-switch" aria-label="使用模式"><button type="button" id="fullMode" class="active" style="display:none" aria-hidden="true" tabindex="-1">完整研究</button></div><span class="storage-state" id="storageState">自动保存准备中</span></div>
@@ -199,12 +181,11 @@
 
     <div class="interaction-status" id="interactionStatus" role="status" aria-live="polite"></div>
 
-    <section class="version-panel" aria-label="数据与规则版本"><h2>版本与计算记录</h2><div class="version-grid"><div class="version-item"><span>工具版本</span><b id="versionApp">2.4.0</b></div><div class="version-item"><span>规则版本</span><b id="versionRules">R2.4</b></div><div class="version-item"><span>估值公式版本</span><b id="versionFormula">F1.3</b></div><div class="version-item"><span>数据版本</span><b id="versionData">等待数据日期</b></div><div class="version-item"><span>最近数据变更</span><b id="lastDataChangeAt">尚未变更</b></div><div class="version-item"><span>最近计算时间</span><b id="lastCalculationAt">尚未计算</b></div></div></section>
+    <section class="version-panel" aria-label="数据与规则版本"><h2>版本与计算记录</h2><div class="version-grid"><div class="version-item"><span>工具版本</span><b id="versionApp">2.5.0-free</b></div><div class="version-item"><span>规则版本</span><b id="versionRules">R2.4</b></div><div class="version-item"><span>估值公式版本</span><b id="versionFormula">F1.3</b></div><div class="version-item"><span>数据版本</span><b id="versionData">等待数据日期</b></div><div class="version-item"><span>最近数据变更</span><b id="lastDataChangeAt">尚未变更</b></div><div class="version-item"><span>最近计算时间</span><b id="lastCalculationAt">尚未计算</b></div></div></section>
     <p class="disclaimer">本工具用于信息整理与风险纪律，不构成任何投资建议。宏观指标与市场信息请以官方最新发布数据为准。</p>
   </main>
   <div class="mobile-bar" aria-label="移动端操作"><button type="button" id="previousStep">上一步</button><button type="button" id="mobileSummary">生成摘要</button><button type="button" id="nextStep" class="primary-step">下一步</button></div>
   <script src="core/risk-engine.js"></script>
-  <script src="auth.js?v=2.4.0"></script>
-  <script src="app.js?v=2.4.0"></script>
+  <script src="app.js?v=2.5.0-free"></script>
 </body>
 </html>

@@ -4,16 +4,13 @@
   var $ = function (selector) { return document.querySelector(selector); };
   var $$ = function (selector) { return document.querySelectorAll(selector); };
   var state = { x: 0, y: 0, quadrant: '宏观坐标原点', macroValid: true, macroContributions: { pmi: 0, social: 0, m2: 0, yield: 0 }, posture: '均衡姿态', confidence: '低置信', rationaleScore: 0, rationaleSupport: [], rationaleCounter: [], allocationType: 'balance', allocationValues: [45, 25, 10, 20], triggerLabels: [], valuationType: 'stable', valuationCalculated: false, valuationZone: '等待计算', valuationRange: '', scenarioValues: [], phaseDecision: '暂不建议买入', phaseReady: false, behaviorLevel: '未完成', behaviorReady: false, behaviorBlocked: false, viewMode: 'full', lastDataChangeAt: '', lastCalculatedAt: '', summaryGenerated: false, activeRole: 1, undoSnapshot: null, history: [], carryover: 0 };
-  var APP_VERSION = '2.4.0';
+  var APP_VERSION = '2.5.0-free';
   var RULE_VERSION = 'R2.4';
   var FORMULA_VERSION = 'F1.3';
   state.safetyMargin = null;
   state.postureReady = false;
   state.pauseUntil = 0;
-  var accountScope = null;
-  var accountEpoch = 0;
   var restoring = false;
-  var initialSnapshot = null;
   var statusTimer = null;
   var storageKey = 'tradeDecisionCardSnapshotsV2';
   var draftKey = 'tradeDecisionCardDraftV3';
@@ -968,8 +965,8 @@
   }
 
   function setStoredData(key, value) {
-    if (!accountScope || restoring) return Promise.resolve(false);
-    key += ':user:' + accountScope;
+    if (restoring) return Promise.resolve(false);
+    key += ':public';
     var serialized;
     try { serialized = JSON.stringify(value); } catch (error) { return Promise.resolve(false); }
     var miniTool = window.xhs && window.xhs.miniTool;
@@ -985,8 +982,7 @@
   }
 
   function getStoredData(key) {
-    if (!accountScope) return Promise.resolve(null);
-    key += ':user:' + accountScope;
+    key += ':public';
     var miniTool = window.xhs && window.xhs.miniTool;
     if (miniTool && typeof miniTool.getStorage === 'function') {
       try {
@@ -1007,9 +1003,7 @@
   function storeHistory() { return setStoredData(storageKey, state.history); }
 
   function loadHistory() {
-    var epoch = accountEpoch;
     return getStoredData(storageKey).then(function (saved) {
-      if (epoch !== accountEpoch) return;
       state.history = Array.isArray(saved) ? saved : [];
       renderHistory(); updateWeekComparison();
     });
@@ -1050,48 +1044,24 @@
   }
 
   function scheduleAutoSave() {
-    if (restoring || !accountScope) return;
+    if (restoring) return;
     if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
     autoSaveTimer = window.setTimeout(function () {
       setStoredData(draftKey, captureSnapshot()).then(function (saved) {
         if (!exists('#storageState')) return;
-        var message = saved ? '草稿已保存到此浏览器（当前账户）' : '本次草稿未持久化';
+        var message = saved ? '草稿已保存到此浏览器' : '本次草稿未持久化';
         if ($('#storageState').textContent !== message) $('#storageState').textContent = message;
       });
     }, 600);
   }
 
   function loadDraft() {
-    var epoch = accountEpoch;
     return getStoredData(draftKey).then(function (draft) {
-      if (epoch !== accountEpoch) return;
       if (!draft || !draft.form) { if (exists('#storageState')) $('#storageState').textContent = '自动保存已开启'; return; }
       restoreSnapshot(draft);
       if (exists('#storageState')) $('#storageState').textContent = '已恢复上次草稿';
     });
   }
-
-  function setAccount(scope) {
-    if (scope === accountScope) return Promise.resolve();
-    accountEpoch += 1;
-    var epoch = accountEpoch;
-    if (accountScope && autoSaveTimer) setStoredData(draftKey, captureSnapshot());
-    if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
-    if (quadrantFrame !== null) { window.cancelAnimationFrame(quadrantFrame); quadrantFrame = null; }
-    accountScope = scope;
-    state.history = []; state.pauseUntil = 0; state.undoSnapshot = null;
-    if (initialSnapshot) restoreSnapshot(initialSnapshot);
-    if (exists('#undoReset')) $('#undoReset').disabled = true;
-    renderHistory();
-    if (!scope) return Promise.resolve();
-    return getStoredData('behaviorPauseUntilV1').then(function (until) {
-      if (epoch !== accountEpoch) return;
-      state.pauseUntil = Number(until) || 0;
-      return loadHistory();
-    }).then(function () { if (epoch === accountEpoch) return loadDraft(); })
-      .then(function () { if (epoch === accountEpoch) updateWorkflow(); });
-  }
-  window.RongheDesk = { setAccount: setAccount };
 
   function setWeekRange() {
     var now = today(); var day = now.getDay(); var offset = day === 0 ? -6 : 1 - day;
@@ -1321,9 +1291,11 @@
     updateBehaviorCount();
     updateWeeklyCount();
     updateWorkflow();
-    initialSnapshot = captureSnapshot();
+    getStoredData('behaviorPauseUntilV1').then(function (until) {
+      state.pauseUntil = Number(until) || 0;
+      return loadHistory();
+    }).then(loadDraft).then(updateWorkflow);
     window.setInterval(function () {
-      if (!accountScope) return;
       if (state.macroValid && macroDataIssue()) updateQuadrant();
       else updateWorkflow();
     }, 60000);
