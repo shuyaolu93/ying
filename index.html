@@ -128,6 +128,15 @@
     #headerLogout{white-space:nowrap;color:var(--red);flex-shrink:0}
     @media(max-width:520px){.account-controls{flex-wrap:wrap;gap:4px}.topbar{height:auto;min-height:67px;padding-top:8px;padding-bottom:8px}}
   </style>
+  <style>
+    /* Extend the opaque sticky navigation into the top safe area. */
+    .step-nav::before{
+      content:"";position:absolute;left:0;right:0;bottom:100%;
+      height:0;
+      height:calc(var(--safe-area-inset-top,env(safe-area-inset-top,0px)) + 2px);
+      background:var(--paper);pointer-events:none;
+    }
+  </style>
 </head>
 <body class="auth-gated">
   <section class="book-cover" id="bookCover" aria-label="登录封面">
