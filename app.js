@@ -4,9 +4,16 @@
   var $ = function (selector) { return document.querySelector(selector); };
   var $$ = function (selector) { return document.querySelectorAll(selector); };
   var state = { x: 0, y: 0, quadrant: '宏观坐标原点', macroValid: true, macroContributions: { pmi: 0, social: 0, m2: 0, yield: 0 }, posture: '均衡姿态', confidence: '低置信', rationaleScore: 0, rationaleSupport: [], rationaleCounter: [], allocationType: 'balance', allocationValues: [45, 25, 10, 20], triggerLabels: [], valuationType: 'stable', valuationCalculated: false, valuationZone: '等待计算', valuationRange: '', scenarioValues: [], phaseDecision: '暂不建议买入', phaseReady: false, behaviorLevel: '未完成', behaviorReady: false, behaviorBlocked: false, viewMode: 'full', lastDataChangeAt: '', lastCalculatedAt: '', summaryGenerated: false, activeRole: 1, undoSnapshot: null, history: [], carryover: 0 };
-  var APP_VERSION = '2.3.0';
-  var RULE_VERSION = 'R2.3';
-  var FORMULA_VERSION = 'F1.2';
+  var APP_VERSION = '2.4.0';
+  var RULE_VERSION = 'R2.4';
+  var FORMULA_VERSION = 'F1.3';
+  state.safetyMargin = null;
+  state.postureReady = false;
+  state.pauseUntil = 0;
+  var accountScope = null;
+  var accountEpoch = 0;
+  var restoring = false;
+  var initialSnapshot = null;
   var statusTimer = null;
   var storageKey = 'tradeDecisionCardSnapshotsV2';
   var draftKey = 'tradeDecisionCardDraftV3';
@@ -19,7 +26,7 @@
   function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
   function numberValue(selector, fallback) {
     var element = $(selector);
-    var value = element ? Number(element.value) : fallback;
+    var value = element && String(element.value).trim() !== '' ? Number(element.value) : fallback;
     return isFinite(value) ? value : fallback;
   }
 
@@ -44,7 +51,7 @@
     var parts = String(value || '').split('-');
     if (parts.length !== 3) return null;
     var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    return isFinite(date.getTime()) ? date : null;
+    return isFinite(date.getTime()) && isoDate(date) === value ? date : null;
   }
   function today() { var value = new Date(); value.setHours(0, 0, 0, 0); return value; }
 
@@ -78,6 +85,8 @@
     var element = $('#dataFreshness');
     var input = $('#dataDate');
     if (!element || !input) return;
+    var issue = macroDataIssue();
+    if (issue) { element.className = 'freshness bad'; element.textContent = issue; return; }
     if (!state.macroValid) { element.className = 'freshness bad'; element.textContent = '请补全宏观指标'; return; }
     var date = parseIso(input.value);
     if (!date) { element.className = 'freshness bad'; element.textContent = '请填写数据日期'; return; }
@@ -86,6 +95,19 @@
     else if (days <= 7) { element.className = 'freshness good'; element.textContent = '数据新鲜 · ' + days + ' 天前'; }
     else if (days <= 31) { element.className = 'freshness'; element.textContent = '建议复核 · ' + days + ' 天前'; }
     else { element.className = 'freshness bad'; element.textContent = '数据已过期 · ' + days + ' 天前'; }
+  }
+
+  function macroDataIssue() {
+    var dates = [['#dataDate', '数据截至日期', 45], ['#pmiDate', 'PMI 发布日期', 45], ['#creditDate', '社融 / M2 发布日期', 45], ['#yieldDate', '国债数据日期', 7]];
+    for (var i = 0; i < dates.length; i += 1) {
+      var input = $(dates[i][0]);
+      if (!input || !parseIso(input.value)) return '请填写真实的' + dates[i][1];
+      var age = daysSinceInput(dates[i][0]);
+      if (age < 0) return dates[i][1] + '不能晚于今天';
+      if (age > dates[i][2]) return dates[i][1] + '已超过复核期限，请更新数据';
+    }
+    if (!exists('#dataSource') || !$('#dataSource').value.trim()) return '请填写可核对的数据来源';
+    return '';
   }
 
   function updateContribution(id, value, description) {
@@ -124,40 +146,37 @@
     for (inputIndex = 0; inputIndex < macroInputs.length; inputIndex += 1) {
       if (!validNumericInput(macroInputs[inputIndex])) invalidInputs.push(macroInputs[inputIndex]);
     }
-    if (invalidInputs.length) {
+    var dataIssue = macroDataIssue();
+    if (invalidInputs.length || dataIssue) {
       state.x = 0; state.y = 0; state.quadrant = '等待完整宏观数据'; state.macroValid = false;
       state.macroContributions = { pmi: 0, social: 0, m2: 0, yield: 0 };
       if (exists('#quadrantName')) $('#quadrantName').textContent = state.quadrant;
-      if (exists('#quadrantReason')) $('#quadrantReason').textContent = '请补全本期与上期指标，并确保数值处于输入范围内。';
+      if (exists('#quadrantReason')) $('#quadrantReason').textContent = dataIssue || '请补全本期与上期指标，并确保数值处于输入范围内。';
       if (exists('#xScore')) $('#xScore').textContent = '—';
       if (exists('#yScore')) $('#yScore').textContent = '—';
       if (exists('#quadrantDot')) { $('#quadrantDot').setAttribute('cx', '180'); $('#quadrantDot').setAttribute('cy', '134'); }
-      if (exists('#dataFreshness')) { $('#dataFreshness').className = 'freshness bad'; $('#dataFreshness').textContent = '请补全宏观指标'; }
+      updateDataFreshness();
       updateContribution('contribPmi', 0, '等待完整数据');
       updateContribution('contribSocial', 0, '等待完整数据');
       updateContribution('contribM2', 0, '等待完整数据');
       updateContribution('contribYield', 0, '等待完整数据');
       markCalculated();
       runScenario();
-      syncMacroTriggers(0, 0);
+      if (exists('#autoLink') && $('#autoLink').checked) syncMacroTriggers(0, 0);
+      else updatePosture();
       return;
     }
     state.macroValid = true;
     updateDataFreshness();
     var m = macroValues();
-    var pmiContribution = clamp((m.pmi - 50) * 22 + (m.pmi - m.pmiPrev) * 34, -82, 82);
+    var pmiContribution = clamp((m.pmi - 50) * 22, -82, 82);
     var socialContribution = clamp(-(m.social - m.socialPrev) * 28, -50, 50);
     var m2Contribution = clamp(-(m.m2 - m.m2Prev) * 28, -50, 50);
     var yieldContribution = clamp((m.bondYield - m.yieldPrev) * 90, -50, 50);
     var y = pmiContribution;
     var x = clamp(socialContribution + m2Contribution + yieldContribution, -82, 82);
-    var name;
-    var reason;
-    if (x < 0 && y >= 0) { name = '宽松扩张 · 复苏象限'; reason = '增长边际扩张，社融、M2 与长端利率综合显示流动性偏宽松。'; }
-    else if (x >= 0 && y >= 0) { name = '收紧扩张 · 过热象限'; reason = '增长仍在扩张，但社融、M2 或长端利率显示流动性趋于收紧。'; }
-    else if (x < 0 && y < 0) { name = '宽松收缩 · 衰退象限'; reason = '增长边际收缩，流动性宽松主要用于托底。'; }
-    else { name = '收紧收缩 · 滞胀象限'; reason = '增长与流动性同时偏紧，应优先控制风险。'; }
-    if (Math.abs(x) < 1 && Math.abs(y) < 1) { name = '宏观坐标原点'; reason = '本期与上期指标没有明显方向变化，暂不做方向性判断。'; }
+    var name = quadrantFor(x, y);
+    var reason = 'PMI ' + (m.pmi > 50 ? '处于扩张区间' : m.pmi < 50 ? '处于收缩区间' : '位于荣枯线') + '，较上期' + (m.pmi > m.pmiPrev ? '改善' : m.pmi < m.pmiPrev ? '回落' : '持平') + '；流动性评分仅作规则参考，不代表通胀判断。';
     state.x = x; state.y = y; state.quadrant = name;
     state.macroContributions = { pmi: pmiContribution, social: socialContribution, m2: m2Contribution, yield: yieldContribution };
     if (exists('#quadrantName')) $('#quadrantName').textContent = name;
@@ -175,7 +194,7 @@
     markCalculated();
     runScenario();
     if (exists('#autoLink') && $('#autoLink').checked) syncMacroTriggers(x, y);
-    else updateWorkflow();
+    else updatePosture();
   }
 
   function resetQuadrant() {
@@ -231,10 +250,12 @@
       }
     } else counter.push('宏观数据不完整，当前结论不能作为执行依据');
     stale = daysSinceInput('#pmiDate') > 45 || daysSinceInput('#creditDate') > 45 || daysSinceInput('#yieldDate') > 7;
-    if (stale) { counter.push('部分宏观数据超过建议复核期限'); score -= 18; }
+    if (stale || !state.macroValid) { counter.push('宏观数据缺失、日期异常或超过复核期限'); score -= 18; }
     if (!counter.length) counter.push('暂未发现与当前姿态直接相反的已选条件');
     score = Math.round(clamp(score, 10, 95));
     state.rationaleScore = score; state.rationaleSupport = support.slice(0); state.rationaleCounter = counter.slice(0);
+    state.confidence = !state.macroValid ? '低置信' : score >= 75 ? '高置信' : score >= 55 ? '中置信' : '低置信';
+    confidence = state.confidence;
     if (exists('#rationaleScore')) $('#rationaleScore').textContent = '判断强度 ' + score + ' / 100';
     if (exists('#rationaleBar')) $('#rationaleBar').style.width = score + '%';
     renderEvidenceList('#supportEvidence', support, '尚无支持证据');
@@ -272,8 +293,11 @@
     if (exists('#posture' + type)) $('#posture' + type).classList.add('selected');
     if (exists('#postureResult')) $('#postureResult').innerHTML = '当前建议：' + label + '<span class="confidence-badge">' + confidence + '</span>';
     if (exists('#postureEvidence')) $('#postureEvidence').textContent = '已选择 ' + selected + ' / 7 项；支持进攻 ' + attack + ' 项，支持防御 ' + defend + ' 项，混合 ' + balance + ' 项。';
-    state.posture = label; state.confidence = confidence; state.triggerLabels = selectedLabels; state.allocationType = allocationType;
+    state.posture = label; state.confidence = confidence; state.triggerLabels = selectedLabels;
+    if (exists('#autoLink') && $('#autoLink').checked) state.allocationType = allocationType;
     updateDecisionRationale(label, confidence, attackLabels, defendLabels, balanceLabels);
+    state.postureReady = selected > 0 && state.macroValid;
+    if (exists('#postureResult')) $('#postureResult').textContent = '当前建议：' + label + ' · ' + state.confidence;
     markCalculated();
     if (exists('#autoLink') && $('#autoLink').checked) {
       updatePie(allocationType, true);
@@ -292,6 +316,7 @@
     updatePosture();
     updatePie(type, true);
     showStatus('已手动切换为' + state.posture);
+    scheduleAutoSave();
   }
 
   var valuationMap = {
@@ -306,7 +331,10 @@
     var config = valuationMap[value];
     if (!config) return;
     state.valuationType = value;
+    invalidateValuation();
     state.valuationCalculated = false;
+    state.valuationZone = '等待计算';
+    state.valuationRange = '';
     state.scenarioValues = [];
     state.summaryGenerated = false;
     if (exists('#valuationTool')) $('#valuationTool').textContent = config.tool;
@@ -331,8 +359,9 @@
   }
 
   function classifyValue(current, lower, upper, percentile) {
-    if (current < lower || (typeof percentile === 'number' && percentile < 35)) return '偏低';
-    if (current > upper || (typeof percentile === 'number' && percentile > 70)) return '偏高';
+    if ((current > upper && percentile < 35) || (current < lower && percentile > 70)) return '信号冲突';
+    if (current < lower) return '偏低';
+    if (current > upper) return '偏高';
     return '合理';
   }
 
@@ -345,6 +374,7 @@
 
   function calculateValuation() {
     state.summaryGenerated = false;
+    invalidateValuation();
     var type = state.valuationType;
     var a = numberValue('#calcInput0', 0);
     var b = numberValue('#calcInput1', 0);
@@ -355,7 +385,7 @@
     var values = [a, b, c, d]; var invalid = [];
     var i;
     for (i = 0; i < values.length; i += 1) {
-      if (!isFinite(values[i]) || values[i] < config.mins[i] || values[i] > config.maxs[i]) invalid.push(config.labels[i]);
+      if (!exists('#calcInput' + i) || !String($('#calcInput' + i).value).trim() || !isFinite(values[i]) || values[i] < config.mins[i] || values[i] > config.maxs[i] || (i === 0 && values[i] <= 0)) invalid.push(config.labels[i]);
     }
     if (invalid.length) {
       if (exists('#valuationError')) { $('#valuationError').className = 'input-error show'; $('#valuationError').textContent = '请检查输入范围：' + invalid.join('、'); }
@@ -381,14 +411,17 @@
     zone = classifyValue(a, lower, upper, type === 'resource' ? d : undefined);
     state.valuationCalculated = true;
     state.valuationZone = zone;
+    state.safetyMargin = (center - a) / center;
     state.valuationRange = lower.toFixed(2) + '–' + upper.toFixed(2) + ' ' + unit;
-    detail = '合理区间：' + state.valuationRange + '；当前值 ' + a.toFixed(2) + '，判断为“' + zone + '”。区间按中心值上下 15% 展开。';
+    detail = '参考区间：' + state.valuationRange + '；当前值 ' + a.toFixed(2) + '，判断为“' + zone + '”。相对中心值折价 ' + (state.safetyMargin * 100).toFixed(1) + '%；买入安全边际门槛为 15%。区间上下 15%、PB/PS 修正系数及三情景参数均为可复核的研究假设，未经过回测校准。';
+    if (type === 'stable' && c - d < 1) detail += ' 股权成本与增长率相差不足 1 个百分点，模型高度敏感，不能据此通过买入检查。';
     if (exists('#valuationZone')) { $('#valuationZone').className = 'valuation-zone ' + (zone === '偏低' ? 'low' : zone === '偏高' ? 'high' : 'fair'); $('#valuationZone').textContent = zone; }
     if (exists('#valuationDetail')) $('#valuationDetail').textContent = detail;
     var bear; var bull;
     if (type === 'stable') {
       bear = valuationCenter(type, b * 0.9, c + 1, Math.max(0, d - 0.5));
-      bull = valuationCenter(type, b * 1.1, Math.max(d + 0.6, c - 0.5), d + 0.5);
+      var spread = c - d;
+      bull = b * 1.1 / ((spread * 0.75) / 100);
     } else if (type === 'resource') {
       bear = valuationCenter(type, b * 0.85, Math.max(0, c - 20), d);
       bull = valuationCenter(type, b * 1.15, Math.min(100, c + 20), d);
@@ -404,11 +437,13 @@
     if (exists('#scenarioBase')) $('#scenarioBase').textContent = center.toFixed(2) + ' ' + unit;
     if (exists('#scenarioBull')) $('#scenarioBull').textContent = bull.toFixed(2) + ' ' + unit;
     var phaseChecks = $$('[data-phase-check]');
-    if (phaseChecks.length > 1) phaseChecks[1].checked = zone !== '偏高';
+    if (phaseChecks.length > 1 && !valuationAllowsBuy()) phaseChecks[1].checked = false;
     if (exists('#autoLink') && $('#autoLink').checked) applyValuationAllocation(zone);
     updatePhaseCount();
     updateWorkflow();
     markCalculated();
+    runScenario();
+    scheduleAutoSave();
     showStatus('估值计算完成：' + zone);
   }
 
@@ -417,7 +452,7 @@
     var preset = allocations[baseType];
     var values = preset.values.slice(0);
     var shift;
-    if (zone === '偏高') {
+    if (zone === '偏高' || zone === '信号冲突') {
       shift = Math.min(10, values[1]);
       values[1] -= shift;
       values[3] += shift;
@@ -430,17 +465,30 @@
   }
 
   function invalidateValuation() {
-    if (!state.valuationCalculated) return;
+    state.summaryGenerated = false;
     state.valuationCalculated = false;
     state.valuationZone = '等待计算';
     state.valuationRange = '';
+    state.safetyMargin = null;
+    state.scenarioValues = [];
+    ['#scenarioBear', '#scenarioBase', '#scenarioBull'].forEach(function (id) { if (exists(id)) $(id).textContent = '—'; });
     if (exists('#valuationZone')) { $('#valuationZone').className = 'valuation-zone fair'; $('#valuationZone').textContent = '数据已修改，请重新计算'; }
     if (exists('#valuationDetail')) $('#valuationDetail').textContent = '输入值已经变化，请再次点击“计算合理估值”。';
     if (exists('#valuationError')) { $('#valuationError').className = 'input-error'; $('#valuationError').textContent = ''; }
     var phaseChecks = $$('[data-phase-check]');
     if (phaseChecks.length > 1) phaseChecks[1].checked = false;
+    if (exists('#autoLink') && $('#autoLink').checked) {
+      var type = state.posture === '进攻姿态' ? 'attack' : state.posture === '防御姿态' ? 'defend' : 'balance';
+      updatePie(type, true);
+    }
+    runScenario();
     updatePhaseCount();
     updateWorkflow();
+  }
+
+  function valuationAllowsBuy() {
+    return state.valuationCalculated && state.valuationZone === '偏低' && state.safetyMargin >= 0.15 &&
+      (state.valuationType !== 'stable' || numberValue('#calcInput2', 0) - numberValue('#calcInput3', 0) >= 1);
   }
 
   function updateCount(selector, outputSelector) {
@@ -466,11 +514,13 @@
       if (checks[i].checked && value) { evidenceReady += 1; evidence.push(value); }
       if (evidenceInputs.length > i) evidenceInputs[i].classList.toggle('missing', checks[i].checked && !value);
     }
-    var ready = checked === checks.length && evidenceReady === checks.length;
+    var ready = checks.length > 0 && checked === checks.length && evidenceReady === checks.length;
+    if (stage === 'buy') ready = ready && valuationAllowsBuy();
+    if (stage === 'hold') ready = ready && validNumericInput('#singlePositionInput') && numberValue('#singlePositionInput', 101) <= 15;
     var decision; var detail;
     if (stage === 'buy') {
       decision = ready ? (state.valuationZone === '偏低' ? '可以买入：可从小仓试错开始' : '买入硬条件通过，进入风险复核') : '暂不建议买入';
-      detail = ready ? '三项硬条件与证据完整；仍须通过风险管理和行为自检。' : '请完成买入阶段的 3 项硬条件并填写对应证据。';
+      detail = ready ? '三项硬条件、证据与至少 15% 的模型折价已通过；仍须通过风险管理和行为自检。' : !valuationAllowsBuy() ? '估值未计算、偏高、信号冲突、安全边际不足 15%，或 DDM 参数过度敏感，不能通过买入检查。' : '请完成买入阶段的 3 项硬条件并填写对应证据。';
     } else if (stage === 'hold') {
       decision = ready ? '继续持有并按验证事件跟踪' : checked ? '持有依据不足，建议降低仓位或补充证据' : '暂不建议无条件持有';
       detail = ready ? '基本面与仓位边界均已确认。' : '持有阶段需要同时确认基本面和仓位，并写下最新证据。';
@@ -488,6 +538,12 @@
   }
 
   function evaluateBehavior() {
+    if (state.pauseUntil > 0 && state.pauseUntil <= Date.now()) {
+      state.pauseUntil = 0;
+      var questions = $$('[data-behavior-answer]');
+      for (var q = 0; q < questions.length; q += 1) questions[q].checked = false;
+      setStoredData('behaviorPauseUntilV1', 0);
+    }
     var labels = { yes: '是', unsure: '不确定', no: '否' };
     var answers = []; var completed = 0; var unsure = 0; var no = 0; var i;
     for (i = 1; i <= 5; i += 1) {
@@ -502,17 +558,22 @@
     for (i = 0; i < redFlags.length; i += 1) if (redFlags[i].checked) redLabels.push(redFlags[i].getAttribute('data-behavior-red'));
     var score = unsure + no * 2 + redLabels.length * 2;
     var level = '低风险';
-    if (completed < 5) level = '未完成';
-    else if (redLabels.length >= 2 || no >= 2 || score >= 7) level = '高风险';
-    else if (redLabels.length >= 1 || score >= 3) level = '中风险';
-    var blocked = level === '高风险';
-    var ready = completed === 5 && level === '低风险';
+    if (redLabels.length >= 2 || no >= 2 || score >= 7 || answers[2] === '否') level = '高风险';
+    else if (completed < 5) level = '未完成';
+    else if (redLabels.length >= 1 || no >= 1 || unsure >= 1 || score >= 3) level = '中风险';
+    if (level === '高风险' && state.pauseUntil <= Date.now()) {
+      state.pauseUntil = Date.now() + 24 * 60 * 60 * 1000;
+      setStoredData('behaviorPauseUntilV1', state.pauseUntil);
+    }
+    var blocked = level === '高风险' || state.pauseUntil > Date.now();
+    var ready = completed === 5 && level === '低风险' && !blocked;
     var advice = level === '未完成' ? '请先完成全部五问，再判断是否适合执行。' : level === '高风险' ? '当前判断容易受到情绪或认知偏差影响，停止执行并在 24 小时后重新检查。' : level === '中风险' ? '建议等待并补充反对证据，不要立即扩大仓位。' : '行为风险较低，可以继续执行风险与证据复核。';
     state.behaviorLevel = level; state.behaviorReady = ready; state.behaviorBlocked = blocked;
     if (exists('#behaviorCount')) $('#behaviorCount').textContent = String(completed);
     if (exists('#redFlagCount')) $('#redFlagCount').textContent = String(redLabels.length);
-    if (exists('#behaviorRisk')) $('#behaviorRisk').textContent = level + (completed === 5 ? ' · ' + score + ' 分' : '');
+    if (exists('#behaviorRisk')) $('#behaviorRisk').textContent = level + (completed === 5 ? ' · ' + score + ' 分' : '') + (blocked ? ' · 暂停中' : '');
     if (exists('#behaviorAdvice')) $('#behaviorAdvice').textContent = advice;
+    if (blocked && exists('#behaviorAdvice')) $('#behaviorAdvice').textContent = '暂停至 ' + new Date(state.pauseUntil).toLocaleString() + '；取消勾选或重置模块不会提前解除。到期后须重新检查五问。';
     if (exists('#behaviorResult')) $('#behaviorResult').className = 'behavior-result ' + (level === '高风险' ? 'high' : level === '中风险' ? 'medium' : 'low');
     if (exists('#behaviorPause')) $('#behaviorPause').classList.toggle('show', blocked);
     return { completed: completed, unsure: unsure, no: no, score: score, level: level, ready: ready, blocked: blocked, answers: answers, redLabels: redLabels };
@@ -529,7 +590,7 @@
   };
 
   function macroProjection(values) {
-    var pmiContribution = clamp((values.pmi - 50) * 22 + (values.pmi - values.pmiPrev) * 34, -82, 82);
+    var pmiContribution = clamp((values.pmi - 50) * 22, -82, 82);
     var socialContribution = clamp(-(values.social - values.socialPrev) * 28, -50, 50);
     var m2Contribution = clamp(-(values.m2 - values.m2Prev) * 28, -50, 50);
     var yieldContribution = clamp((values.bondYield - values.yieldPrev) * 90, -50, 50);
@@ -538,21 +599,29 @@
 
   function quadrantFor(x, y) {
     if (Math.abs(x) < 1 && Math.abs(y) < 1) return '宏观坐标原点';
+    if (Math.abs(x) < 1) return '流动性中性 · ' + (y > 0 ? '扩张' : '收缩');
+    if (Math.abs(y) < 1) return (x < 0 ? '宽松' : '收紧') + ' · PMI 位于荣枯线附近';
     if (x < 0 && y >= 0) return '宽松扩张 · 复苏象限';
     if (x >= 0 && y >= 0) return '收紧扩张 · 过热象限';
     if (x < 0 && y < 0) return '宽松收缩 · 衰退象限';
-    return '收紧收缩 · 滞胀象限';
+    return '收紧收缩 · 双重偏紧';
   }
 
   function scenarioAllocation(type) {
     var values = allocations[type].values.slice(0); var shift;
-    if (state.valuationCalculated && state.valuationZone === '偏高') { shift = Math.min(10, values[1]); values[1] -= shift; values[3] += shift; }
+    if (state.valuationCalculated && (state.valuationZone === '偏高' || state.valuationZone === '信号冲突')) { shift = Math.min(10, values[1]); values[1] -= shift; values[3] += shift; }
     else if (state.valuationCalculated && state.valuationZone === '偏低' && type !== 'defend') { shift = Math.min(5, values[3]); values[1] += shift; values[3] -= shift; }
     return values;
   }
 
   function runScenario() {
+    state.summaryGenerated = false;
     if (!exists('#simPmi')) return;
+    if (!state.macroValid) {
+      ['#simCoordinate', '#simQuadrant', '#simPosture', '#simAllocation'].forEach(function (id) { if (exists(id)) $(id).textContent = '等待有效宏观数据'; });
+      if (exists('#simExplanation')) $('#simExplanation').textContent = '请先补齐真实指标、来源及有效日期。';
+      return;
+    }
     var pmiDelta = numberValue('#simPmi', 0); var socialDelta = numberValue('#simSocial', 0); var m2Delta = numberValue('#simM2', 0); var yieldBps = numberValue('#simYield', 0);
     var base = macroValues();
     var projected = macroProjection({ pmi: base.pmi + pmiDelta, pmiPrev: base.pmiPrev, social: base.social + socialDelta, socialPrev: base.socialPrev, m2: base.m2 + m2Delta, m2Prev: base.m2Prev, bondYield: base.bondYield + yieldBps / 100, yieldPrev: base.yieldPrev });
@@ -583,6 +652,9 @@
   }
 
   function renderAllocation(values, label) {
+    if (values.length !== 4 || values.some(function (v) { return !isFinite(v) || v < 0 || v > 100; }) || Math.abs(values.reduce(function (sum, v) { return sum + v; }, 0) - 100) > 0.000001) {
+      values = allocations.balance.values.slice(0); label = '无效仓位已恢复为均衡组合';
+    }
     var circumference = 282.743;
     var ids = ['#pieBase', '#pieAttack', '#pieTactical', '#pieCash'];
     var labels = ['#allocBase', '#allocAttack', '#allocTactical', '#allocCash'];
@@ -614,6 +686,7 @@
     state.allocationType = type;
     if (!automatic && exists('#autoLink')) $('#autoLink').checked = false;
     if (!automatic) showStatus('仓位已切换为' + preset.label);
+    if (!automatic) scheduleAutoSave();
   }
 
   function updateCustomAllocation(event) {
@@ -660,6 +733,8 @@
     var position = numberValue('#singlePositionInput', 0);
     var leverage = numberValue('#leverageInput', 0);
     var messages = [];
+    var stop = $('#evidenceBuyStop');
+    if (!stop || !stop.value.trim() || !exists('#phaseBuyStop') || !$('#phaseBuyStop').checked) messages.push('请在第 4 模块填写并确认止损或逻辑失效条件');
     if (!positionValid) messages.push('请填写有效的单票仓位');
     else if (position > 15) messages.push('单票仓位需 ≤ 15%');
     if (!leverageValid) messages.push('请填写有效的杠杆率');
@@ -682,7 +757,8 @@
     var conflicts = [];
     var phaseChecks = $$('[data-phase-check]');
     if (state.posture === '防御姿态' && state.allocationValues[1] > 20) conflicts.push('防御姿态与进攻仓 ' + state.allocationValues[1] + '% 存在冲突');
-    if (state.valuationZone === '偏高' && phaseChecks.length > 1 && phaseChecks[1].checked) conflicts.push('估值偏高，但“安全边际”已被勾选');
+    if (!valuationAllowsBuy() && phaseChecks.length > 1 && phaseChecks[1].checked) conflicts.push('估值未达到买入门槛，但“安全边际”已被勾选');
+    if (state.valuationZone === '信号冲突') conflicts.push('PB 模型与历史分位方向相反，需复核数据与估值假设');
     if ((daysSinceInput('#pmiDate') > 45 || daysSinceInput('#creditDate') > 45 || daysSinceInput('#yieldDate') > 7) && state.confidence === '高置信') conflicts.push('部分宏观数据过期，不应维持高置信判断');
     if (!riskReady && state.allocationValues[1] >= 30) conflicts.push('风险校验未通过，但进攻仓位较高');
     if (state.behaviorBlocked) conflicts.push('行为自检为高风险，执行结论已暂停 24 小时');
@@ -694,8 +770,7 @@
   function updateWeekComparison() {
     var output = $('#weekComparison'); if (!output) return;
     if (!state.history.length || !state.history[0].snapshot || !state.history[0].snapshot.stateData) { output.textContent = '暂无历史快照，保存一次决策后即可比较。'; return; }
-    if (state.history.length === 1) { output.textContent = '已建立第一条复盘基线；保存下一次决策后将展示变化。'; return; }
-    var previous = state.history[1]; var previousState = previous.snapshot.stateData;
+    var previous = state.history[0]; var previousState = previous.snapshot.stateData;
     var previousAllocation = previousState.allocationValues && previousState.allocationValues.length === 4 ? previousState.allocationValues : [0, 0, 0, 0];
     var allocationChange = [];
     var labels = ['底仓', '进攻仓', '机动仓', '现金']; var i;
@@ -720,7 +795,7 @@
     var riskReady = validateRisk();
     var allocationTotal = 0; var i;
     for (i = 0; i < state.allocationValues.length; i += 1) allocationTotal += state.allocationValues[i];
-    var ready = [state.macroValid, Boolean(state.posture), state.valuationCalculated, phase.ready, allocationTotal === 100, riskReady, behavior.ready];
+    var ready = [state.macroValid, state.postureReady, state.valuationCalculated && state.valuationZone !== '信号冲突', phase.ready, allocationTotal === 100, riskReady, behavior.ready];
     var score = 0;
     for (i = 0; i < ready.length; i += 1) if (ready[i]) score += 1;
     if (exists('#workflowScore')) $('#workflowScore').textContent = '联动完成度 ' + score + ' / 7';
@@ -736,9 +811,14 @@
     setWeeklyState('allocation', state.valuationZone === '偏高' || allocationTotal !== 100, '姿态：' + state.posture + '；估值：' + state.valuationZone + '；仓位合计 ' + allocationTotal + '%');
     setWeeklyState('risk', !riskReady || !behavior.ready, '风险确认：' + (riskReady ? '完成' : '未完成') + '；行为：' + behavior.level + '，五问 ' + behavior.completed + '/5');
     setWeeklyState('record', !state.summaryGenerated, state.summaryGenerated ? '本周摘要已生成，可复核后记录' : '优先：完成决策链后生成摘要');
-    updateConflicts(riskReady);
+    var conflicts = updateConflicts(riskReady);
+    if (conflicts.length && score === 7) {
+      advice = '存在联动冲突，请先解决冲突后执行。';
+      if (exists('#workflowAdvice')) $('#workflowAdvice').textContent = advice;
+    }
     updateWeekComparison();
     updateDashboard(score, riskReady, advice);
+    if (conflicts.length && exists('#overallStatus')) $('#overallStatus').textContent = '存在联动冲突';
   }
 
   function generateSummary() {
@@ -768,8 +848,8 @@
       '三、估值工具\n' + companyName + '｜' + valuationTool + '\n' + valuationGuide + '\n估值结论：' + state.valuationZone + (state.valuationRange ? '；合理区间 ' + state.valuationRange : '；尚未完成计算') + '\n\n' +
       '四、单票检查\n当前阶段：' + phase.stageLabel + '｜结论：' + phase.decision + '\n已满足 ' + phaseItems.length + '/7 项：' + (phaseItems.length ? phaseItems.join('；') : '尚未勾选') + '\n证据：' + (phase.evidence.length ? phase.evidence.join('；') : '尚未填写') + '\n\n' +
       '五、组合仓位\n' + preset.label + '：底仓 ' + preset.values[0] + '%、进攻仓 ' + preset.values[1] + '%、机动仓 ' + preset.values[2] + '%、现金 ' + preset.values[3] + '%\n\n' +
-      '六、风险纪律\n当前单票 ' + numberValue('#singlePositionInput', 0).toFixed(1) + '%，杠杆 ' + numberValue('#leverageInput', 0).toFixed(1) + '%；止损条件已确认。\n仓位测算：最大风险 ' + ($('#maxLossOutput') ? $('#maxLossOutput').textContent : '—') + '，最大股数 ' + ($('#positionSharesOutput') ? $('#positionSharesOutput').textContent : '—') + '，资金占比 ' + ($('#positionRatioOutput') ? $('#positionRatioOutput').textContent : '—') + '。\n\n' +
-      '七、行为自检\n风险等级：' + behavior.level + '｜五问：' + behavior.answers.join(' / ') + '\n红旗行为：' + (behavior.redLabels.length ? behavior.redLabels.join('；') : '无') + '\n执行状态：' + (behavior.blocked ? '暂停交易，至少等待 24 小时后重新自检' : behavior.ready && phase.ready ? '可以继续执行风险与证据复核' : '条件未完整，暂不执行') + '\n\n八、每周观察：已完成 ' + weeklyItems.length + '/5 项\n\n' +
+      '六、风险纪律\n当前单票 ' + numberValue('#singlePositionInput', 0).toFixed(1) + '%，杠杆 ' + numberValue('#leverageInput', 0).toFixed(1) + '%；止损或逻辑失效条件：' + $('#evidenceBuyStop').value.trim() + '。\n\n' +
+      '七、行为自检\n风险等级：' + behavior.level + '｜五问：' + behavior.answers.join(' / ') + '\n红旗行为：' + (behavior.redLabels.length ? behavior.redLabels.join('；') : '无') + '\n执行状态：' + (behavior.blocked ? '暂停至 ' + new Date(state.pauseUntil).toLocaleString() : behavior.ready && phase.ready && state.postureReady && !updateConflicts(true).length ? '可以继续执行风险与证据复核' : '条件未完整或存在冲突，暂不执行') + '\n\n八、每周观察：已完成 ' + weeklyItems.length + '/5 项\n\n' +
       '本周主要风险：' + (exists('#weeklyRiskNote') && $('#weeklyRiskNote').value ? $('#weeklyRiskNote').value : '未填写') + '\n' +
       '下周验证事件：' + (exists('#weeklyNextEvent') && $('#weeklyNextEvent').value ? $('#weeklyNextEvent').value : '未填写') + '\n\n' +
       '附：情景模拟（不覆盖正式结论）\n' + (exists('#simQuadrant') ? $('#simQuadrant').textContent : '未运行') + '｜' + (exists('#simPosture') ? $('#simPosture').textContent : '未运行') + '｜仓位 ' + (exists('#simAllocation') ? $('#simAllocation').textContent : '—') + '\n\n' +
@@ -779,6 +859,7 @@
     state.summaryGenerated = true;
     updateWorkflow();
     showStatus('决策摘要已生成');
+    scheduleAutoSave();
     return true;
   }
 
@@ -795,7 +876,8 @@
 
   function captureSnapshot() {
     return {
-      schemaVersion: 5,
+      schemaVersion: 6,
+      ruleVersion: RULE_VERSION,
       createdAt: new Date().toISOString(),
       form: captureForm('main'),
       stateData: {
@@ -803,6 +885,8 @@
         valuationCalculated: state.valuationCalculated,
         valuationZone: state.valuationZone,
         valuationRange: state.valuationRange,
+        safetyMargin: state.safetyMargin,
+        carryover: state.carryover,
         scenarioValues: state.scenarioValues.slice(0),
         allocationType: state.allocationType,
         allocationValues: state.allocationValues.slice(0),
@@ -817,20 +901,23 @@
 
   function restoreSnapshot(snapshot) {
     if (!snapshot || !snapshot.form) return;
+    restoring = true;
     var nodes = $$('main input,main textarea'); var i; var item; var node;
     for (i = 0; i < snapshot.form.length; i += 1) {
       item = snapshot.form[i];
-      node = item.id ? document.getElementById(item.id) : snapshot.schemaVersion === 5 ? nodes[item.index] : null;
+      node = item.id ? document.getElementById(item.id) : snapshot.schemaVersion === 6 ? nodes[item.index] : null;
       if (!node) continue;
       if (item.type === 'checkbox' || item.type === 'radio') node.checked = item.checked;
       else node.value = item.value;
     }
     var restoredAllocation = [45, 25, 10, 20];
     if (snapshot.stateData) {
-      state.valuationType = snapshot.stateData.valuationType || 'stable';
+      state.valuationType = valuationMap[snapshot.stateData.valuationType] ? snapshot.stateData.valuationType : 'stable';
       state.valuationCalculated = Boolean(snapshot.stateData.valuationCalculated);
       state.valuationZone = snapshot.stateData.valuationZone || '等待计算';
       state.valuationRange = snapshot.stateData.valuationRange || '';
+      state.safetyMargin = typeof snapshot.stateData.safetyMargin === 'number' ? snapshot.stateData.safetyMargin : null;
+      state.carryover = snapshot.stateData.carryover || 0;
       state.scenarioValues = snapshot.stateData.scenarioValues ? snapshot.stateData.scenarioValues.slice(0) : [];
       state.allocationType = snapshot.stateData.allocationType || 'balance';
       state.allocationValues = snapshot.stateData.allocationValues ? snapshot.stateData.allocationValues.slice(0) : [45, 25, 10, 20];
@@ -853,7 +940,17 @@
       }
     }
     if (exists('#summaryOutput')) $('#summaryOutput').value = snapshot.summary || '';
-    updateQuadrant(); updatePosture(); renderAllocation(restoredAllocation, state.allocationType === 'custom' ? '自定义组合' : '已恢复组合');
+    if (snapshot.schemaVersion !== 6 || snapshot.ruleVersion !== RULE_VERSION) {
+      ['#dataDate', '#pmiDate', '#creditDate', '#yieldDate'].forEach(function (id) { if (exists(id)) $(id).value = ''; });
+    }
+    var hadValuation = state.valuationCalculated;
+    var confirmedValue = exists('#phaseBuyValue') && $('#phaseBuyValue').checked;
+    var restoredType = state.allocationType;
+    updateQuadrant(); updatePosture(); invalidateValuation();
+    if (hadValuation && snapshot.ruleVersion === RULE_VERSION) calculateValuation();
+    if (exists('#phaseBuyValue')) $('#phaseBuyValue').checked = Boolean(confirmedValue && valuationAllowsBuy());
+    state.allocationType = restoredType;
+    renderAllocation(restoredAllocation, restoredType === 'custom' ? '自定义组合' : '已恢复组合');
     if (exists('#valuationZone')) { $('#valuationZone').textContent = state.valuationCalculated ? state.valuationZone : '等待计算'; $('#valuationZone').className = 'valuation-zone ' + (state.valuationZone === '偏低' ? 'low' : state.valuationZone === '偏高' ? 'high' : 'fair'); }
     if (exists('#valuationDetail') && state.valuationRange) $('#valuationDetail').textContent = '已恢复快照；合理区间：' + state.valuationRange + '。如修改参数，请重新计算。';
     if (state.scenarioValues.length === 3) {
@@ -863,9 +960,16 @@
       if (exists('#scenarioBull')) $('#scenarioBull').textContent = state.scenarioValues[2].toFixed(2) + ' ' + scenarioUnit;
     }
     setViewMode('full', true); runScenario(); updateVersionPanel(); updatePhaseCount(); updateBehaviorCount(); updateWeeklyCount(); updateDataFreshness(); updateWorkflow();
+    if (exists('#carryoverStatus')) $('#carryoverStatus').textContent = '上周未完成 ' + state.carryover + ' 项';
+    state.summaryGenerated = false;
+    if (exists('#summaryOutput') && snapshot.summary) $('#summaryOutput').value = '历史摘要，仅供参考；当前规则已重新校验，请生成最新摘要。\n\n' + snapshot.summary;
+    restoring = false;
+    if (state.pauseUntil > Date.now()) setStoredData('behaviorPauseUntilV1', state.pauseUntil);
   }
 
   function setStoredData(key, value) {
+    if (!accountScope || restoring) return Promise.resolve(false);
+    key += ':user:' + accountScope;
     var serialized;
     try { serialized = JSON.stringify(value); } catch (error) { return Promise.resolve(false); }
     var miniTool = window.xhs && window.xhs.miniTool;
@@ -881,6 +985,8 @@
   }
 
   function getStoredData(key) {
+    if (!accountScope) return Promise.resolve(null);
+    key += ':user:' + accountScope;
     var miniTool = window.xhs && window.xhs.miniTool;
     if (miniTool && typeof miniTool.getStorage === 'function') {
       try {
@@ -901,7 +1007,9 @@
   function storeHistory() { return setStoredData(storageKey, state.history); }
 
   function loadHistory() {
+    var epoch = accountEpoch;
     return getStoredData(storageKey).then(function (saved) {
+      if (epoch !== accountEpoch) return;
       state.history = Array.isArray(saved) ? saved : [];
       renderHistory(); updateWeekComparison();
     });
@@ -934,7 +1042,7 @@
   }
 
   function saveDecisionSnapshot() {
-    if (!state.summaryGenerated && !generateSummary()) return;
+    if (!generateSummary()) return;
     state.history.unshift({ createdAt: new Date().toISOString(), label: state.quadrant, zone: state.valuationZone, posture: state.posture, snapshot: captureSnapshot() });
     if (state.history.length > 20) state.history.length = 20;
     renderHistory(); updateWeekComparison();
@@ -942,23 +1050,48 @@
   }
 
   function scheduleAutoSave() {
+    if (restoring || !accountScope) return;
     if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
     autoSaveTimer = window.setTimeout(function () {
       setStoredData(draftKey, captureSnapshot()).then(function (saved) {
         if (!exists('#storageState')) return;
-        var message = saved ? '草稿已自动保存' : '本次草稿未持久化';
+        var message = saved ? '草稿已保存到此浏览器（当前账户）' : '本次草稿未持久化';
         if ($('#storageState').textContent !== message) $('#storageState').textContent = message;
       });
     }, 600);
   }
 
   function loadDraft() {
+    var epoch = accountEpoch;
     return getStoredData(draftKey).then(function (draft) {
+      if (epoch !== accountEpoch) return;
       if (!draft || !draft.form) { if (exists('#storageState')) $('#storageState').textContent = '自动保存已开启'; return; }
       restoreSnapshot(draft);
       if (exists('#storageState')) $('#storageState').textContent = '已恢复上次草稿';
     });
   }
+
+  function setAccount(scope) {
+    if (scope === accountScope) return Promise.resolve();
+    accountEpoch += 1;
+    var epoch = accountEpoch;
+    if (accountScope && autoSaveTimer) setStoredData(draftKey, captureSnapshot());
+    if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+    if (quadrantFrame !== null) { window.cancelAnimationFrame(quadrantFrame); quadrantFrame = null; }
+    accountScope = scope;
+    state.history = []; state.pauseUntil = 0; state.undoSnapshot = null;
+    if (initialSnapshot) restoreSnapshot(initialSnapshot);
+    if (exists('#undoReset')) $('#undoReset').disabled = true;
+    renderHistory();
+    if (!scope) return Promise.resolve();
+    return getStoredData('behaviorPauseUntilV1').then(function (until) {
+      if (epoch !== accountEpoch) return;
+      state.pauseUntil = Number(until) || 0;
+      return loadHistory();
+    }).then(function () { if (epoch === accountEpoch) return loadDraft(); })
+      .then(function () { if (epoch === accountEpoch) updateWorkflow(); });
+  }
+  window.RongheDesk = { setAccount: setAccount };
 
   function setWeekRange() {
     var now = today(); var day = now.getDay(); var offset = day === 0 ? -6 : 1 - day;
@@ -968,6 +1101,7 @@
   }
 
   function startNewWeek() {
+    state.summaryGenerated = false;
     var checks = $$('#role8 [data-weekly] input[type="checkbox"]'); var done = 0; var i;
     for (i = 0; i < checks.length; i += 1) { if (checks[i].checked) done += 1; checks[i].checked = false; }
     state.carryover = checks.length - done;
@@ -975,6 +1109,7 @@
     if (exists('#weeklyRiskNote')) $('#weeklyRiskNote').value = '';
     if (exists('#weeklyNextEvent')) $('#weeklyNextEvent').value = '';
     setWeekRange(); updateWeeklyCount(); updateWorkflow(); showStatus('已开始新一周复盘');
+    scheduleAutoSave();
   }
 
   function setViewMode(mode, silent) {
@@ -1014,7 +1149,8 @@
     if (!target) return;
     lockNavigation(number);
     target.classList.remove('collapsed');
-    var offset = window.innerWidth <= 520 ? 112 : 68;
+    var nav = $('#stepNav');
+    var offset = nav ? nav.getBoundingClientRect().height + 18 : 68;
     var top = window.pageYOffset + target.getBoundingClientRect().top - offset;
     window.scrollTo(0, Math.max(0, top));
   }
@@ -1073,6 +1209,7 @@
   }
 
   function resetCurrentRole() {
+    state.summaryGenerated = false;
     state.undoSnapshot = captureSnapshot(); if (exists('#undoReset')) $('#undoReset').disabled = false;
     var root = $('#role' + state.activeRole); if (!root) return;
     resetElements(root);
@@ -1082,6 +1219,7 @@
     else if (state.activeRole === 5) updatePie('balance', true);
     else { updatePhaseCount(); updateBehaviorCount(); updateWeeklyCount(); updateWorkflow(); }
     showStatus('第 ' + state.activeRole + ' 模块已重置');
+    scheduleAutoSave();
   }
 
   function resetAllRoles() {
@@ -1090,9 +1228,10 @@
     var cards = $$('.role-card'); var i;
     for (i = 0; i < cards.length; i += 1) resetElements(cards[i]);
     state.valuationType = 'stable'; state.valuationCalculated = false; state.valuationZone = '等待计算'; state.valuationRange = ''; state.scenarioValues = []; state.summaryGenerated = false;
-    if (exists('#dataDate')) $('#dataDate').value = isoDate(today());
+    updateValuation({ target: { value: 'stable' } });
     resetQuadrant(); updatePosture(); updatePie('balance', true); applyScenarioPreset('reset'); updatePhaseCount(); updateBehaviorCount(); updateWeeklyCount(); setWeekRange(); updateWorkflow();
     showStatus('全部模块已重置，可点击撤销');
+    scheduleAutoSave();
   }
 
   function undoLastReset() {
@@ -1100,6 +1239,7 @@
     var snapshot = state.undoSnapshot; state.undoSnapshot = null; restoreSnapshot(snapshot);
     if (exists('#undoReset')) $('#undoReset').disabled = true;
     showStatus('已撤销上次重置');
+    scheduleAutoSave();
   }
 
   function bindAll(selector, eventName, handler) {
@@ -1124,10 +1264,8 @@
 
   function initialize() {
     if (supportsFlexGap()) document.documentElement.classList.add('supports-flex-gap');
-    if (exists('#dataDate') && !$('#dataDate').value) $('#dataDate').value = isoDate(today());
-    if (exists('#pmiDate') && !$('#pmiDate').value) $('#pmiDate').value = isoDate(today());
-    if (exists('#creditDate') && !$('#creditDate').value) $('#creditDate').value = isoDate(today());
-    if (exists('#yieldDate') && !$('#yieldDate').value) $('#yieldDate').value = isoDate(today());
+    var inputs = $$('main input,main textarea');
+    for (var n = 0; n < inputs.length; n += 1) if (!inputs[n].id) inputs[n].id = 'desk-field-' + n;
     setWeekRange();
     addCollapseButtons();
     bindAll('#role1 input', 'input', scheduleQuadrantUpdate);
@@ -1141,11 +1279,11 @@
     bindAll('[data-trade-stage]', 'change', function () { state.summaryGenerated = false; updatePhaseCount(); showStatus('已切换当前交易阶段'); });
     bindAll('[data-behavior-answer]', 'change', function () { state.summaryGenerated = false; updateBehaviorCount(); showStatus('行为自检已更新'); });
     bindAll('[data-behavior-red]', 'change', function () { state.summaryGenerated = false; updateBehaviorCount(); showStatus('红旗行为已更新'); });
-    bindAll('#role8 input[type="checkbox"]', 'change', function () { updateWeeklyCount(); showStatus('每周观察进度已更新'); });
+    bindAll('#role8 input[type="checkbox"]', 'change', function () { state.summaryGenerated = false; updateWeeklyCount(); updateWorkflow(); showStatus('每周观察进度已更新'); });
     bindAll('[data-preset]', 'click', function (event) { updatePie(event.currentTarget.getAttribute('data-preset'), false); });
     bindAll('[data-allocation-slider]', 'input', updateCustomAllocation);
-    bindAll('.scenario-control input', 'input', runScenario);
-    bindAll('[data-scenario-preset]', 'click', function (event) { applyScenarioPreset(event.currentTarget.getAttribute('data-scenario-preset')); });
+    bindAll('.scenario-control input', 'input', function () { runScenario(); updateWorkflow(); });
+    bindAll('[data-scenario-preset]', 'click', function (event) { applyScenarioPreset(event.currentTarget.getAttribute('data-scenario-preset')); updateWorkflow(); scheduleAutoSave(); });
     bindAll('[data-posture]', 'click', function (event) { choosePosture(event.currentTarget.getAttribute('data-posture')); });
     if (exists('#quadrantReset')) $('#quadrantReset').addEventListener('click', resetQuadrant);
     if (exists('#calculateValuation')) $('#calculateValuation').addEventListener('click', calculateValuation);
@@ -1160,6 +1298,7 @@
     bindAll('#weeklyRiskNote,#weeklyNextEvent', 'input', function () { state.summaryGenerated = false; updateWorkflow(); });
     if (exists('#autoLink')) $('#autoLink').addEventListener('change', function () { if ($('#autoLink').checked) { updateQuadrant(); showStatus('自动联动已开启'); } else showStatus('自动联动已关闭，可手动选择'); });
     bindAll('#stepNav [data-step]', 'click', function (event) {
+      event.preventDefault();
       goToRole(Number(event.currentTarget.getAttribute('data-step')));
     });
     bindAll('.role-card[id^="role"]', 'click', function (event) {
@@ -1182,7 +1321,12 @@
     updateBehaviorCount();
     updateWeeklyCount();
     updateWorkflow();
-    loadHistory().then(loadDraft);
+    initialSnapshot = captureSnapshot();
+    window.setInterval(function () {
+      if (!accountScope) return;
+      if (state.macroValid && macroDataIssue()) updateQuadrant();
+      else updateWorkflow();
+    }, 60000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize);
