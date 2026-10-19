@@ -23,9 +23,19 @@
   function open() { var modal = document.getElementById('authModal'); if (modal) { modal.hidden = false; render(); } }
   function save(data) { token = data.token || token; user = data.user || user; if (token) localStorage.setItem(tokenKey, token); render(); enterApp(); }
   function clear() { token = ''; user = null; localStorage.removeItem(tokenKey); render(); showCover(); }
+  function logout() {
+    request('/api/auth/logout', { method: 'POST' }).catch(function () {});
+    clear(); close();
+    ['authPassword', 'coverPassword', 'authCode'].forEach(function (id) {
+      var field = document.getElementById(id); if (field) field.value = '';
+    });
+    window.scrollTo(0, 0);
+    coverMessage('已退出登录', true);
+    var email = document.getElementById('coverEmail'); if (email) email.focus();
+  }
   function mount() {
     var pill = document.querySelector('.live-pill'); if (!pill) return;
-    pill.outerHTML = '<button type="button" class="account-button" id="accountButton">登录 / 注册</button>';
+    pill.outerHTML = '<div class="account-controls"><button type="button" class="account-button" id="accountButton">登录 / 注册</button><button type="button" class="account-button" id="headerLogout">退出登录</button></div>';
     var overlay = document.createElement('div'); overlay.id = 'authModal'; overlay.className = 'auth-overlay'; overlay.hidden = true;
     overlay.innerHTML = '<section class="auth-panel" role="dialog" aria-modal="true" aria-labelledby="authTitle"><button type="button" class="auth-close" id="authClose">×</button><h2 id="authTitle">账户与卡密</h2><p class="auth-subtitle">登录后兑换卡密，启用云端风控与历史记录。</p><label>邮箱<input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com"></label><label>密码<input id="authPassword" type="password" autocomplete="current-password" placeholder="至少 8 位"></label><div class="auth-actions"><button type="button" class="primary" id="authLogin">登录</button><button type="button" class="secondary" id="authRegister">注册</button></div><div class="auth-divider"></div><label>卡密<input id="authCode" type="text" autocomplete="off" placeholder="兑换卡密，例如 RONGHE-XXXX"></label><button type="button" class="primary auth-redeem" id="authRedeem">兑换卡密</button><button type="button" class="auth-logout" id="authLogout">退出登录</button><div id="authNote" class="auth-note"></div></section>';
     document.body.appendChild(overlay);
@@ -34,7 +44,8 @@
     document.getElementById('authLogin').addEventListener('click', function () { request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: document.getElementById('authEmail').value, password: document.getElementById('authPassword').value }) }).then(function (data) { save(data); show('登录成功', true); }).catch(function (error) { show(error.message); }); });
     document.getElementById('authRegister').addEventListener('click', function () { request('/api/auth/register', { method: 'POST', body: JSON.stringify({ email: document.getElementById('authEmail').value, password: document.getElementById('authPassword').value }) }).then(function (data) { save(data); show('注册成功，请兑换卡密', true); }).catch(function (error) { show(error.message); }); });
     document.getElementById('authRedeem').addEventListener('click', function () { if (!token) return show('请先登录'); request('/api/auth/redeem', { method: 'POST', body: JSON.stringify({ code: document.getElementById('authCode').value }) }).then(function (data) { save(data); show('兑换成功，有效期至 ' + data.user.entitlementUntil.slice(0, 10), true); }).catch(function (error) { show(error.message); }); });
-    document.getElementById('authLogout').addEventListener('click', function () { request('/api/auth/logout', { method: 'POST' }).catch(function () {}).then(function () { clear(); show('已退出登录', true); }); });
+    document.getElementById('authLogout').addEventListener('click', logout);
+    document.getElementById('headerLogout').addEventListener('click', logout);
     var coverForm = document.getElementById('coverAuthForm');
     var coverEmail = document.getElementById('coverEmail');
     var coverPassword = document.getElementById('coverPassword');
