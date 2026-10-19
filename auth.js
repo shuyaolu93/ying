@@ -10,6 +10,9 @@
     return fetch(API + path, options).then(function (response) { return response.json().then(function (data) { if (!response.ok) throw new Error(data.message || data.error || '请求失败'); return data; }); });
   }
   function show(message, good) { var note = document.getElementById('authNote'); if (!note) return; note.textContent = message; note.className = 'auth-note ' + (good ? 'good' : 'bad'); }
+  function coverMessage(message, good) { var note = document.getElementById('coverNote'); if (!note) return; note.textContent = message || ''; note.style.color = good ? '#2f7d5c' : '#b63b2b'; }
+  function enterApp() { document.body.classList.remove('auth-gated'); coverMessage(''); }
+  function showCover(message) { document.body.classList.add('auth-gated'); if (message) coverMessage(message); }
   function active() { return user && user.active; }
   function render() {
     var button = document.getElementById('accountButton'); if (!button) return;
@@ -18,8 +21,8 @@
   }
   function close() { var modal = document.getElementById('authModal'); if (modal) modal.hidden = true; }
   function open() { var modal = document.getElementById('authModal'); if (modal) { modal.hidden = false; render(); } }
-  function save(data) { token = data.token || token; user = data.user || user; if (token) localStorage.setItem(tokenKey, token); render(); }
-  function clear() { token = ''; user = null; localStorage.removeItem(tokenKey); render(); }
+  function save(data) { token = data.token || token; user = data.user || user; if (token) localStorage.setItem(tokenKey, token); render(); enterApp(); }
+  function clear() { token = ''; user = null; localStorage.removeItem(tokenKey); render(); showCover(); }
   function mount() {
     var pill = document.querySelector('.live-pill'); if (!pill) return;
     pill.outerHTML = '<button type="button" class="account-button" id="accountButton">登录 / 注册</button>';
@@ -32,7 +35,19 @@
     document.getElementById('authRegister').addEventListener('click', function () { request('/api/auth/register', { method: 'POST', body: JSON.stringify({ email: document.getElementById('authEmail').value, password: document.getElementById('authPassword').value }) }).then(function (data) { save(data); show('注册成功，请兑换卡密', true); }).catch(function (error) { show(error.message); }); });
     document.getElementById('authRedeem').addEventListener('click', function () { if (!token) return show('请先登录'); request('/api/auth/redeem', { method: 'POST', body: JSON.stringify({ code: document.getElementById('authCode').value }) }).then(function (data) { save(data); show('兑换成功，有效期至 ' + data.user.entitlementUntil.slice(0, 10), true); }).catch(function (error) { show(error.message); }); });
     document.getElementById('authLogout').addEventListener('click', function () { request('/api/auth/logout', { method: 'POST' }).catch(function () {}).then(function () { clear(); show('已退出登录', true); }); });
-    if (token) request('/api/auth/me').then(function (data) { user = data.user; render(); }).catch(clear); else render();
+    var coverForm = document.getElementById('coverAuthForm');
+    var coverEmail = document.getElementById('coverEmail');
+    var coverPassword = document.getElementById('coverPassword');
+    if (coverForm) coverForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      coverMessage('正在验证…');
+      request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: coverEmail.value, password: coverPassword.value }) }).then(function (data) { save(data); }).catch(function (error) { coverMessage(error.message); });
+    });
+    if (document.getElementById('coverRegister')) document.getElementById('coverRegister').addEventListener('click', function () {
+      coverMessage('正在创建账户…');
+      request('/api/auth/register', { method: 'POST', body: JSON.stringify({ email: coverEmail.value, password: coverPassword.value }) }).then(function (data) { save(data); }).catch(function (error) { coverMessage(error.message); });
+    });
+    if (token) request('/api/auth/me').then(function (data) { user = data.user; render(); enterApp(); }).catch(clear); else { render(); showCover(); }
   }
   window.RongheAuth = { getToken: function () { return token; }, isActive: active, open: open };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
