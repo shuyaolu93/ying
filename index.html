@@ -100,6 +100,28 @@
     .auth-gated .shell{visibility:hidden}.book-cover{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:24px;background:#181511}.auth-gated .book-cover{display:flex}.book-cover-inner{position:relative;width:min(100%,470px);min-height:min(720px,calc(100vh - 48px));display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;padding:42px 38px 34px;background:#f3efe5;color:#28211b;border:1px solid #b7a78d;box-shadow:0 24px 80px rgba(0,0,0,.45)}.book-cover-inner:before{content:"";position:absolute;top:0;bottom:0;left:17px;width:1px;background:#b63b2b66}.book-cover-inner:after{content:"";position:absolute;right:-100px;top:-100px;width:280px;height:280px;border:1px solid #b63b2b55;border-radius:50%;box-shadow:0 0 0 22px #b63b2b0d,0 0 0 44px #b63b2b09}.cover-kicker{position:relative;z-index:1;color:#b63b2b;font:700 .7rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.22em}.cover-title{position:relative;z-index:1;margin:18px 0 8px;font:700 clamp(2rem,8vw,3.5rem)/1.15 "Songti SC","STSong",serif;letter-spacing:.08em}.cover-subtitle{position:relative;z-index:1;margin:0;color:#776f64;font-size:.8rem;letter-spacing:.2em}.cover-rule{position:relative;z-index:1;width:78px;height:3px;margin:30px 0;background:#b63b2b}.cover-motto{position:relative;z-index:1;max-width:280px;margin:0;color:#51483e;font:1.05rem/2 "Songti SC","STSong",serif}.cover-form{position:relative;z-index:1;margin-top:24px;padding:18px 0 0;border-top:1px solid #d9d1c2}.cover-form label{display:block;margin-top:10px;color:#776f64;font-size:.75rem}.cover-form input{display:block;width:100%;margin-top:5px;padding:11px;border:1px solid #cfc3af;background:#fffdf7;color:#28211b;font-size:16px}.cover-actions{display:flex;gap:8px;margin-top:14px}.cover-actions button{flex:1;border:1px solid #28211b;padding:10px 12px;background:#28211b;color:#fff;font-weight:700}.cover-actions button:last-child{background:transparent;color:#28211b}.cover-note{min-height:22px;margin-top:10px;color:#b63b2b;font-size:.76rem}.cover-footer{position:relative;z-index:1;display:flex;justify-content:space-between;gap:12px;margin-top:28px;padding-top:12px;border-top:1px solid #d9d1c2;color:#776f64;font: .65rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}.cover-seal{position:absolute;right:32px;bottom:106px;z-index:1;display:grid;place-items:center;width:66px;height:66px;border:1px solid #b63b2b;color:#b63b2b;font:700 .72rem/1.3 "Songti SC","STSong",serif;text-align:center;transform:rotate(-8deg)}
     @media(max-width:520px){.account-button{font-size:.66rem;padding:6px 8px}.auth-panel{padding:20px 16px}.book-cover{padding:12px}.book-cover-inner{min-height:calc(100vh - 24px);padding:32px 28px 26px}.book-cover-inner:before{left:12px}.cover-seal{right:24px;bottom:105px}}
   </style>
+  <style>
+    .book-cover{background:#eee8dc;overflow-y:auto}
+    .book-cover-inner{flex-shrink:0;box-shadow:0 18px 60px #51483e18}
+    @media(min-width:821px){
+      .book-cover{padding:40px}
+      .book-cover-inner{width:min(1120px,100%);min-height:620px;padding:64px 64px 36px}
+      .book-cover-inner>div:first-child{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.85fr);column-gap:80px;align-content:center;flex:1}
+      .cover-kicker,.cover-title,.cover-subtitle,.cover-rule,.cover-motto{grid-column:1}
+      .cover-title{font-size:clamp(3rem,4.8vw,4.6rem);margin:24px 0 16px}
+      .cover-rule{margin:28px 0}
+      .cover-form{grid-column:2;grid-row:1 / 6;align-self:center;margin:0;padding:24px 0 24px 40px;border-top:0;border-left:1px solid #d9d1c2}
+      .cover-form label{font-size:.85rem;margin-top:18px}
+      .cover-form input{padding:14px}
+      .cover-actions{margin-top:24px}
+      .cover-actions button{min-height:48px}
+      .cover-footer{margin-top:48px}
+    }
+    @media(max-height:760px){
+      .book-cover{align-items:flex-start}
+      .book-cover-inner{min-height:0}
+    }
+  </style>
 </head>
 <body class="auth-gated">
   <section class="book-cover" id="bookCover" aria-label="登录封面">
