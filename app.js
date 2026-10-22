@@ -998,6 +998,13 @@
     state.carryover = 0;
     state.history = [];
     state.pauseUntil = 0;
+    state.safetyMargin = null;
+    state.postureReady = false;
+    state.lastDataChangeAt = '';
+    state.lastCalculatedAt = '';
+    state.activeRole = 1;
+    state.viewMode = 'full';
+    state.undoSnapshot = null;
     if (exists('#summaryOutput')) $('#summaryOutput').value = '';
     updateValuation({ target: { value: 'stable' } });
     resetQuadrant();
