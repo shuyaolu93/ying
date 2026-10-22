@@ -15,6 +15,9 @@
   var storageKey = 'tradeDecisionCardSnapshotsV2';
   var draftKey = 'tradeDecisionCardDraftV3';
   var autoSaveTimer = null;
+  var storageScope = 'pending';
+  var storageReadyPromise = null;
+  var storageInitialized = false;
   var navigationLockUntil = 0;
   var navigationTarget = 0;
   var scrollFrame = null;
@@ -964,9 +967,75 @@
     if (state.pauseUntil > Date.now()) setStoredData('behaviorPauseUntilV1', state.pauseUntil);
   }
 
+  function resetForAccountScope() {
+    var cards = $('.role-card');
+    var i;
+    for (i = 0; i < cards.length; i += 1) resetElements(cards[i]);
+    state.x = 0;
+    state.y = 0;
+    state.quadrant = '宏观坐标原点';
+    state.macroValid = true;
+    state.macroContributions = { pmi: 0, social: 0, m2: 0, yield: 0 };
+    state.posture = '均衡姿态';
+    state.confidence = '低置信';
+    state.rationaleScore = 0;
+    state.rationaleSupport = [];
+    state.rationaleCounter = [];
+    state.allocationType = 'balance';
+    state.allocationValues = [45, 25, 10, 20];
+    state.triggerLabels = [];
+    state.valuationType = 'stable';
+    state.valuationCalculated = false;
+    state.valuationZone = '等待计算';
+    state.valuationRange = '';
+    state.scenarioValues = [];
+    state.phaseDecision = '暂不建议买入';
+    state.phaseReady = false;
+    state.behaviorLevel = '未完成';
+    state.behaviorReady = false;
+    state.behaviorBlocked = false;
+    state.summaryGenerated = false;
+    state.carryover = 0;
+    state.history = [];
+    state.pauseUntil = 0;
+    if (exists('#summaryOutput')) $('#summaryOutput').value = '';
+    updateValuation({ target: { value: 'stable' } });
+    resetQuadrant();
+    updatePosture();
+    updatePie('balance', true);
+    applyScenarioPreset('reset');
+    setWeekRange();
+    renderHistory();
+    updatePhaseCount();
+    updateBehaviorCount();
+    updateWeeklyCount();
+    updateWorkflow();
+  }
+
+  function loadScopedAccountData() {
+    return getStoredData('behaviorPauseUntilV1').then(function (until) {
+      state.pauseUntil = Number(until) || 0;
+      return loadHistory();
+    }).then(loadDraft).then(updateWorkflow);
+  }
+
+  function setAccountScope(scope) {
+    var nextScope = scope ? 'account-' + String(scope).replace(/[^a-zA-Z0-9_-]/g, '_') : 'guest';
+    if (nextScope === storageScope && storageInitialized) return Promise.resolve(true);
+    storageScope = nextScope;
+    if (!storageReadyPromise) return Promise.resolve(true);
+    return storageReadyPromise.then(function () {
+      resetForAccountScope();
+      return loadScopedAccountData();
+    }).then(function () {
+      storageInitialized = true;
+      return true;
+    });
+  }
+
   function setStoredData(key, value) {
     if (restoring) return Promise.resolve(false);
-    key += ':public';
+    key += ':' + storageScope;
     var serialized;
     try { serialized = JSON.stringify(value); } catch (error) { return Promise.resolve(false); }
     var miniTool = window.xhs && window.xhs.miniTool;
@@ -982,7 +1051,7 @@
   }
 
   function getStoredData(key) {
-    key += ':public';
+    key += ':' + storageScope;
     var miniTool = window.xhs && window.xhs.miniTool;
     if (miniTool && typeof miniTool.getStorage === 'function') {
       try {
@@ -1291,16 +1360,20 @@
     updateBehaviorCount();
     updateWeeklyCount();
     updateWorkflow();
-    getStoredData('behaviorPauseUntilV1').then(function (until) {
+    storageReadyPromise = getStoredData('behaviorPauseUntilV1').then(function (until) {
       state.pauseUntil = Number(until) || 0;
       return loadHistory();
-    }).then(loadDraft).then(updateWorkflow);
+    }).then(loadDraft).then(updateWorkflow).then(function () {
+      storageInitialized = true;
+      return true;
+    });
     window.setInterval(function () {
       if (state.macroValid && macroDataIssue()) updateQuadrant();
       else updateWorkflow();
     }, 60000);
   }
 
+  window.RongheDesk = { setAccount: setAccountScope };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize);
   else initialize();
 }());
