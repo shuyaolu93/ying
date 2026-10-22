@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日本蜡烛图技术 · 形态与案例图谱 · 盈</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23FFFFFF'/%3E%3Crect x='4' y='7' width='6' height='12' fill='%23E5484D'/%3E%3Cline x1='7' y1='3' x2='7' y2='7' stroke='%23E5484D' stroke-width='2'/%3E%3Cline x1='7' y1='19' x2='7' y2='29' stroke='%23E5484D' stroke-width='2'/%3E%3Crect x='16' y='13' width='6' height='10' fill='%232F9E63'/%3E%3Cline x1='19' y1='10' x2='19' y2='13' stroke='%232F9E63' stroke-width='2'/%3E%3Cline x1='19' y1='23' x2='19' y2='28' stroke='%232F9E63' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://miaoda.feishu.cn">
+<link href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@500;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFFFFF; --surface:#FFFFFF; --surface2:#FAFAFA;
+  --line:#ECECEC; --line2:#E0E0E0;
+  --text:#171717; --dim:#7E7E7E; --faint:#B8B8B8;
+  --up:#E5484D; --down:#2F9E63;
+  --topbar:rgba(255,255,255,.92); --backdrop:rgba(24,24,24,.22); --shadow:0 3px 14px rgba(0,0,0,.05);
+  --serif:"Noto Serif SC",serif; --sans:"Noto Sans SC",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+html[data-theme="dark"]{
+  --bg:#0F0F13; --surface:#16161B; --surface2:#1C1C23;
+  --line:#26262E; --line2:#34343E;
+  --text:#EDEDF0; --dim:#9C9CA6; --faint:#6A6A75;
+  --up:#F06166; --down:#37B574;
+  --topbar:rgba(15,15,19,.88); --backdrop:rgba(0,0,0,.55); --shadow:0 3px 14px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.75;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button{font-family:inherit;cursor:pointer}
+a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
+
+/* ---------- 顶部 ---------- */
+.topbar{position:sticky;top:0;z-index:40;background:var(--topbar);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1120px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.logo{font-family:var(--serif);font-weight:900;font-size:16px;letter-spacing:.04em}
+.logo i{font-style:normal}
+.topnav{display:flex;gap:2px;flex-wrap:wrap;margin-left:auto}
+.tchip{background:transparent;border:none;color:var(--dim);font-size:13.5px;padding:7px 12px;border-radius:8px;border-bottom:2px solid transparent;transition:.15s}
+.tchip:hover{color:var(--text);background:var(--surface2)}
+.tchip.on{color:var(--text);font-weight:600;border-bottom-color:var(--text)}
+.theme-toggle{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);background:var(--surface);color:var(--dim);font-size:13px;padding:7px 13px;border-radius:999px;transition:.15s;white-space:nowrap}
+.theme-toggle:hover{color:var(--text);border-color:var(--text)}
+.theme-toggle svg{width:14px;height:14px;flex:none}
+
+/* ---------- hero ---------- */
+.hero{max-width:1120px;margin:0 auto;padding:64px 20px 40px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--faint);margin-bottom:16px}
+.hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(32px,5.5vw,54px);line-height:1.16;letter-spacing:.01em}
+.hero p{margin-top:16px;max-width:640px;color:var(--dim);font-size:15px}
+.hero .meta{margin-top:28px;display:flex;flex-wrap:wrap;gap:8px 0}
+.hero .meta span{font-size:13px;color:var(--dim);padding-right:26px;margin-right:26px;border-right:1px solid var(--line)}
+.hero .meta span:last-child{border-right:none;padding-right:0;margin-right:0}
+.hero .meta b{color:var(--text);font-weight:700;font-size:15px}
+
+/* ---------- 章节 ---------- */
+.chapter{max-width:1120px;margin:0 auto;padding:40px 20px 6px}
+.ch-head{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:6px}
+.ch-num{font-family:var(--mono);font-size:12px;color:var(--faint);letter-spacing:.08em}
+.ch-head h2{font-family:var(--serif);font-weight:900;font-size:22px}
+.ch-head .en{font-size:12px;color:var(--faint);font-family:var(--mono)}
+.ch-head .count{margin-left:auto;font-size:12px;color:var(--faint);font-family:var(--mono)}
+.ch-note{font-size:13px;color:var(--faint);margin:0 0 22px;max-width:720px}
+
+/* ---------- 网格 ---------- */
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+.cell{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;display:flex;flex-direction:column;text-align:left;color:inherit;min-width:0}
+.cell:hover{border-color:var(--line2);box-shadow:var(--shadow);transform:translateY(-1px)}
+.cell:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.cell .cv{width:100%;height:46px;display:block;margin-bottom:12px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:5px 6px}
+.cell .cv svg{width:100%;height:100%;display:block}
+.cell .cn{font-family:var(--serif);font-weight:700;font-size:16.5px;line-height:1.35}
+.cell .en{font-size:11px;color:var(--faint);font-family:var(--mono);margin-top:2px}
+.cell .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.tag{font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--dim);background:var(--surface2)}
+.tag.up{color:var(--up);border-color:rgba(229,72,77,.35);background:rgba(229,72,77,.06)}
+.tag.down{color:var(--down);border-color:rgba(47,158,99,.35);background:rgba(47,158,99,.06)}
+.tag.neu{color:var(--dim)}
+.cell .ds{font-size:12.5px;color:var(--dim);margin-top:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* ---------- 详情弹层 ---------- */
+.modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:18px}
+.modal.open{display:flex}
+.backdrop{position:absolute;inset:0;background:var(--backdrop)}
+.panel{position:relative;width:min(760px,100%);max-height:90vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:32px 30px;box-shadow:0 24px 64px var(--shadow)}
+.close{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--dim);font-size:20px;display:flex;align-items:center;justify-content:center}
+.close:hover{border-color:var(--text);color:var(--text)}
+.m-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.m-top .ch{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.08em}
+.m-top h2{font-family:var(--serif);font-size:26px;font-weight:900}
+.m-top .en{font-size:12px;color:var(--faint);font-family:var(--mono)}
+.m-tags{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 6px}
+.m-candle{width:100%;height:140px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px;margin:14px 0}
+.m-candle svg{width:100%;height:100%}
+.m-sec{font-size:11px;color:var(--faint);letter-spacing:.14em;margin:22px 0 8px;display:flex;align-items:center;gap:10px}
+.m-sec::before{content:"";width:20px;height:1px;background:var(--line2)}
+.m-body p{color:var(--dim);font-size:14.5px;margin-bottom:10px}
+.m-note{background:var(--surface2);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--text)}
+.case{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.case .ct{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--faint);margin-bottom:8px}
+.case .ct b{color:var(--text);font-weight:600;font-family:var(--mono)}
+.case .case-chart{width:100%;height:132px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;margin:12px 0}
+.case .case-chart svg{width:100%;height:100%}
+.case p{color:var(--dim);font-size:14px;margin:0}
+
+footer{border-top:1px solid var(--line);margin-top:52px;padding:32px 20px 56px;text-align:center;color:var(--faint);font-size:12px}
+footer b{color:var(--dim);font-weight:500}
+
+@media(min-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1280px){.grid{grid-template-columns:repeat(4,1fr)}}
+
+.site-switcher{display:flex;gap:6px;align-items:center;margin-left:auto}.site-switcher a{display:inline-flex;align-items:center;min-height:32px;padding:6px 10px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--dim);font-size:12px;text-decoration:none;transition:.15s}.site-switcher a:hover,.site-switcher a.active{color:var(--text);border-color:var(--text)}
+@media(max-width:700px){.site-switcher{order:3;width:100%;margin-left:0}.site-switcher a{flex:1;justify-content:center}}
+</style>
+</head>
+<body>
+
+<!-- ============ 顶部导航 ============ -->
+<nav class="topbar">
+  <div class="topbar-in">
+    <span class="logo">日本蜡烛图 · <i>形态图谱</i></span><nav class="site-switcher" aria-label="网页切换"><a href="./index.html">交易决策研究室</a><a class="active" href="./candle.html">日本蜡烛图</a></nav>
+    <button class="theme-toggle" id="themeToggle" aria-label="切换深浅色模式">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <span id="themeLabel">深色</span>
+    </button>
+    <div class="topnav" id="topnav">
+      <button class="tchip" data-goto="ch04">第四章 反转</button>
+      <button class="tchip" data-goto="ch05">第五章 星线</button>
+      <button class="tchip" data-goto="ch06">第六章 其他反转</button>
+      <button class="tchip" data-goto="ch07">第七章 持续</button>
+      <button class="tchip" data-goto="ch08">第八章 十字线</button>
+      <button class="tchip" data-goto="ch09">第九章 汇总</button>
+      <button class="tchip" data-goto="ch10">第十章 汇聚</button>
+      <button class="tchip" data-goto="ch11">第十一章 趋势线</button>
+      <button class="tchip" data-goto="ch12">第十二章 回撤</button>
+      <button class="tchip" data-goto="ch13">第十三章 均线</button>
+      <button class="tchip" data-goto="ch14">第十四章 摆动指数</button>
+      <button class="tchip" data-goto="ch15">第十五章 交易量</button>
+      <button class="tchip" data-goto="ch16">第十六章 目标</button>
+      <button class="tchip" data-goto="ch17">第十七章 综合</button>
+      <button class="tchip" data-goto="gA">术语表A</button>
+      <button class="tchip" data-goto="gB">术语表B</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="eyebrow">STEVE NISON · JAPANESE CANDLESTICK CHARTING</div>
+  <h1>日本蜡烛图技术<br>形态与案例图谱</h1>
+  <p>依据史蒂夫·尼森《日本蜡烛图技术（第 2 版）》（丁圣元译）逐章整理：每个形态配示意图、形态定义、识别要点，以及书中真实图例作为案例（标的、周期、时间与价格过程）。</p>
+  <div class="meta">
+    <span>形态收录 <b id="mTotal">0</b></span>
+    <span>按书中章节分类 <b>第四章 ~ 术语表B</b></span>
+    <span>红＝看涨 · 绿＝看跌</span>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<!-- ============ 详情弹层 ============ -->
+<div class="modal" id="modal" role="dialog" aria-modal="true">
+  <div class="backdrop" data-close></div>
+  <div class="panel">
+    <button class="close" data-close aria-label="关闭">×</button>
+    <div class="m-top"><span class="ch" id="mCh"></span><h2 id="mTitle"></h2><span class="en" id="mEn"></span></div>
+    <div class="m-tags" id="mTags"></div>
+    <div class="m-candle" id="mCandle"></div>
+    <div class="m-sec">形态定义</div>
+    <div class="m-body" id="mBody"></div>
+    <div class="m-sec">识别要点</div>
+    <div class="m-note" id="mNote"></div>
+    <div class="m-sec">书中案例</div>
+    <div class="case" id="mCase"></div>
+  </div>
+</div>
+
+<footer>内容整理自《日本蜡烛图技术（第 2 版）》史蒂夫·尼森著，丁圣元译；蜡烛图为示意绘制，非真实行情。<br><b>仅供学习参考，不构成任何投资建议。</b></footer>
+
+<script>
+const UP='#E5484D', DOWN='#2F9E63';
+const THEME_KEY='candle-theme';
+function loadTheme(){try{return localStorage.getItem(THEME_KEY)}catch(e){return null}}
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  const lb=document.getElementById('themeLabel');
+  if(lb)lb.textContent=(t==='dark'?'浅色':'深色');
+  try{localStorage.setItem(THEME_KEY,t)}catch(e){}
+}
+applyTheme(loadTheme()==='dark'?'dark':'light');
+const CHAPTERS=[
+  {id:'ch04',num:'第四章',name:'反转形态',en:'Reversal Patterns',note:'较强烈的反转信号：锤子线 / 上吊线（伞形线）、吞没（抱线）、乌云盖顶、刺透。'},
+  {id:'ch05',num:'第五章',name:'星线',en:'Star Patterns',note:'以“星线”（小实体+与前实体跳空）为共同特征的反转形态。'},
+  {id:'ch06',num:'第六章',name:'其他反转形态',en:'Other Reversal Patterns',note:'孕线、平头、捉腰带、乌鸦、三兵、三山三川、反击、圆形与塔形顶底等。'},
+  {id:'ch07',num:'第七章',name:'持续形态',en:'Continuation Patterns',note:'形态完成后趋势延续：窗口、并列阴阳线、三法、分手线等。'},
+  {id:'ch08',num:'第八章',name:'神奇的十字线',en:'The Doji',note:'十字线家族：北方/南方十字线、长腿、墓碑、蜻蜓、大风大浪线与三星形态。'},
+  {id:'ch09',num:'第九章',name:'蜡烛图技术汇总',en:'Summary',note:'以债券期货综合图例逐点解读，演示如何把全部蜡烛图工具放进总体技术环境中综合判断。'},
+  {id:'ch10',num:'第十章',name:'蜡烛图信号的汇聚',en:'Signal Convergence',note:'一群蜡烛图信号汇聚在同一价格区，将放大该区域作为支撑或阻挡的重要性。'},
+  {id:'ch11',num:'第十一章',name:'蜡烛图与趋势线',en:'Candlesticks & Trend Lines',note:'趋势线的类型与画法、破低反涨/破高反跌形态、极性转换原则。'},
+  {id:'ch12',num:'第十二章',name:'蜡烛图与百分比回撤',en:'Candlesticks & Retracements',note:'38% / 50% / 62% 斐波那契回撤水平，以及回撤位必须得到蜡烛图信号验证。'},
+  {id:'ch13',num:'第十三章',name:'蜡烛图与移动平均线',en:'Candlesticks & Moving Averages',note:'简单/加权/指数加权移动平均线，黄金交叉与死亡交叉，均线作支撑或阻挡。'},
+  {id:'ch14',num:'第十四章',name:'蜡烛图与摆动指数',en:'Candlesticks & Oscillators',note:'RSI、移动平均线摆动指数、随机指数、MACD；超买超卖与相互背离。'},
+  {id:'ch15',num:'第十五章',name:'蜡烛图与交易量',en:'Candlesticks & Volume',note:'交易量验证蜡烛图信号：放量锤子线/十字线/纺锤线、形态量能分布、突破验证。'},
+  {id:'ch16',num:'第十六章',name:'测算价格目标',en:'Price Targets',note:'箱体突破、对等运动、旗形与尖旗形、上升/下降三角形的价格目标测算。'},
+  {id:'ch17',num:'第十七章',name:'东西方技术相互验证',en:'Confluence',note:'纳斯达克综合指数案例：东方形态与西方工具汇聚于同一区域，预测主要顶部。'},
+  {id:'gA',num:'术语表A',name:'蜡烛图技术术语',en:'Glossary A: Candlestick Terms',note:'书中蜡烛图术语小词典：待入线/切入线/插入线、前方受阻、纺锤线、光脚光头、伞形线等。'},
+  {id:'gB',num:'术语表B',name:'西方技术分析术语',en:'Glossary B: Western Terms',note:'书中西方技术分析术语：趋势线、支撑与阻挡、突破跳空、岛形、颈线、摆动指数等。'}
+];
+let PATTERNS=[];
+</script>
+<script src="assets/data1.js"></script>
+<script src="assets/data2.js"></script>
+<script src="assets/data3.js"></script>
+<script src="assets/data4.js"></script>
+<script src="assets/data5.js"></script>
+<script>
+/* ---- 蜡烛渲染 ---- */
+function candleSVG(arr){
+  const W=150,H=100,P=9;
+  let lo=Infinity,hi=-Infinity;
+  arr.forEach(c=>{lo=Math.min(lo,c[2]);hi=Math.max(hi,c[1]);});
+  const span=(hi-lo)||1,n=arr.length,step=(W-2*P)/n,bw=Math.max(7,step*0.58);
+  const y=v=>P+(H-2*P)*(hi-v)/span;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-hidden="true">`;
+  arr.forEach((c,i)=>{
+    const x=P+i*step+step/2,up=c[3]>=c[0],col=up?UP:DOWN;
+    const oy=y(c[0]),cy=y(c[3]),bt=Math.min(oy,cy),bb=Math.max(oy,cy),bh=Math.max(bb-bt,1.6);
+    s+=`<line x1="${x}" y1="${y(c[1])}" x2="${x}" y2="${y(c[2])}" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`;
+    s+=`<rect x="${x-bw/2}" y="${bt}" width="${bw}" height="${bh}" fill="${col}"/>`;
+    if(bh<=2.2){s+=`<line x1="${x-bw/2}" y1="${bt}" x2="${x+bw/2}" y2="${bt}" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`;}
+  });
+  return s+'</svg>';
+}
+
+/* ---- 渲染 ---- */
+function build(){
+  document.getElementById('mTotal').textContent=PATTERNS.length;
+  const main=document.getElementById('main');
+  main.innerHTML=CHAPTERS.map(ch=>{
+    const list=PATTERNS.filter(p=>p.ch===ch.id);
+    if(!list.length)return '';
+    return `<section class="chapter" id="${ch.id}">
+      <div class="ch-head"><span class="ch-num">${ch.num}</span><h2>${ch.name}</h2><span class="en">${ch.en}</span><span class="count">${list.length} 个形态</span></div>
+      <p class="ch-note">${ch.note}</p>
+      <div class="grid" style="margin-top:18px">${list.map(cardHTML).join('')}</div>
+    </section>`;
+  }).join('');
+}
+function cardHTML(p){
+  const s=p.sig==='看涨'?'up':(p.sig==='看跌'?'down':'neu');
+  return `<button class="cell" data-id="${p.id}" aria-label="查看 ${p.cn} 详情">
+    <span class="cv">${candleSVG(p.candle)}</span>
+    <span class="cn">${p.cn}</span>
+    <span class="en">${p.en}</span>
+    <span class="tags"><span class="tag ${s}">${p.sig}</span><span class="tag">${p.kind}</span></span>
+    <span class="ds">${p.desc}</span>
+  </button>`;
+}
+function tagHTML(p){
+  const s=p.sig==='看涨'?'up':(p.sig==='看跌'?'down':'neu');
+  const ch=CHAPTERS.find(c=>c.id===p.ch);
+  return `<span class="tag ${s}">${p.sig}</span><span class="tag">${p.kind}</span><span class="tag">${ch?ch.num:p.ch}</span>`;
+}
+function openModal(id){
+  const p=PATTERNS.find(x=>x.id===id); if(!p)return;
+  const ch=CHAPTERS.find(c=>c.id===p.ch);
+  document.getElementById('mCh').textContent=(ch?ch.num+' '+ch.name:'');
+  document.getElementById('mTitle').textContent=p.cn;
+  document.getElementById('mEn').textContent=p.en;
+  document.getElementById('mTags').innerHTML=tagHTML(p);
+  document.getElementById('mCandle').innerHTML=candleSVG(p.candle);
+  document.getElementById('mBody').innerHTML=`<p>${p.def}</p>`;
+  document.getElementById('mNote').textContent=p.note;
+  document.getElementById('mCase').innerHTML=
+    `<div class="ct"><span>标的：<b>${p.case.t}</b></span><span>周期：<b>${p.case.f}</b></span><span>时间：<b>${p.case.d}</b></span></div>`+
+    `<div class="case-chart">${candleSVG(p.candle)}</div><p>${p.case.c}</p>`;
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';}
+
+/* ---- 事件 ---- */
+document.querySelectorAll('.tchip').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const el=document.getElementById(b.dataset.goto);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});
+document.getElementById('main').addEventListener('click',e=>{
+  const cell=e.target.closest('.cell'); if(cell)openModal(cell.dataset.id);
+});
+document.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click',closeModal));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.getElementById('themeToggle').addEventListener('click',()=>{
+  applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+});
+build();
+</script>
+</body>
+</html>
