@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#f3efe5" />
   <meta name="description" content="完整交易角色卡：宏观判断、姿态选择、估值、组合与风险管理。" />
-  <title>交易决策完整角色卡</title>
+  <title>盈 · 交易决策研究室</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='9' fill='%2328211b'/%3E%3Cpath d='M15 46h34M18 39l9-10 8 6 12-18' fill='none' stroke='%23b63b2b' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='47' cy='17' r='4' fill='%23efe9dc'/%3E%3C/svg%3E" />
   <style>
     :root{--ink:#201f1b;--paper:#f4f1ea;--panel:#fffdf7;--muted:#716e66;--line:#d8d3c8;--yellow:#f6c84a;--red:#e9564f;--green:#2f8d68;--blue:#3d6fb6;--shadow:0 18px 55px rgba(32,31,27,.12)}
@@ -136,13 +136,15 @@
       height:calc(var(--safe-area-inset-top,env(safe-area-inset-top,0px)) + 2px);
       background:var(--paper);pointer-events:none;
     }
-  </style>
+  
+    .header-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.site-switcher{display:flex;gap:6px;align-items:center}.site-switcher a{display:inline-flex;align-items:center;min-height:32px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font:700 .68rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.03em;text-decoration:none;transition:.15s}.site-switcher a:hover,.site-switcher a.active{border-color:var(--red);color:var(--red);background:#fffaf0}.book-cover-inner .cover-switch{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.book-cover-inner .cover-switch a{color:#776f64;font-size:.72rem;text-decoration:none;border-bottom:1px solid #b7a78d;padding-bottom:2px}
+</style>
 </head>
 <body>
   <main class="shell">
     <header class="topbar">
       <div class="brand"><div class="mark">策</div><div><h1>交易决策研究室</h1><p>DECISION DESK · 规则先于情绪</p></div></div>
-      <div class="live-pill"><span class="live-dot"></span><span>免费公开版 · 数据仅保存在此浏览器</span></div>
+      <div class="header-tools"><nav class="site-switcher" aria-label="网页切换"><a class="active" href="./index.html">交易决策研究室</a><a href="./candle.html">日本蜡烛图</a></nav><div class="live-pill"><span class="live-dot"></span><span>免费公开版 · 数据仅保存在此浏览器</span></div></div>
     </header>
 
     <div class="control-strip" aria-label="全局操作"><button type="button" id="resetCurrent">重置当前模块</button><button type="button" id="resetAll" class="danger">重置全部</button><button type="button" id="undoReset" disabled>撤销上次重置</button><div class="view-switch" aria-label="使用模式"><button type="button" id="fullMode" class="active" style="display:none" aria-hidden="true" tabindex="-1">完整研究</button></div><span class="storage-state" id="storageState">自动保存准备中</span></div>
@@ -184,8 +186,31 @@
     <section class="version-panel" aria-label="数据与规则版本"><h2>版本与计算记录</h2><div class="version-grid"><div class="version-item"><span>工具版本</span><b id="versionApp">2.5.0-free</b></div><div class="version-item"><span>规则版本</span><b id="versionRules">R2.4</b></div><div class="version-item"><span>估值公式版本</span><b id="versionFormula">F1.3</b></div><div class="version-item"><span>数据版本</span><b id="versionData">等待数据日期</b></div><div class="version-item"><span>最近数据变更</span><b id="lastDataChangeAt">尚未变更</b></div><div class="version-item"><span>最近计算时间</span><b id="lastCalculationAt">尚未计算</b></div></div></section>
     <p class="disclaimer">本工具用于信息整理与风险纪律，不构成任何投资建议。宏观指标与市场信息请以官方最新发布数据为准。</p>
   </main>
+
+  <div class="book-cover" id="bookCover" aria-label="账户登录">
+    <section class="book-cover-inner">
+      <div>
+        <div class="cover-kicker">YING · DECISION DESK</div>
+        <h2 class="cover-title">交易决策<br>研究室</h2>
+        <p class="cover-subtitle">规则先于情绪 · 数据留在浏览器</p>
+        <div class="cover-rule"></div>
+        <p class="cover-motto">登录并兑换有效卡密后，开始使用完整的研究工作台。</p>
+        <div class="cover-switch"><a href="./candle.html">先浏览日本蜡烛图形态 →</a></div>
+        <form class="cover-form" id="coverAuthForm">
+          <label>邮箱<input id="coverEmail" type="email" autocomplete="email" placeholder="name@example.com" required></label>
+          <label>密码<input id="coverPassword" type="password" autocomplete="current-password" placeholder="至少 8 位" required></label>
+          <div class="cover-actions"><button type="submit">登录</button><button type="button" id="coverRegister">注册账户</button></div>
+          <button type="button" id="coverAccount" style="display:none">账户设置</button>
+          <div class="cover-note" id="coverNote" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+      <div class="cover-footer"><span>ACCOUNT ACCESS</span><span>YING / 2.6</span></div>
+      <div class="cover-seal">盈<br>研</div>
+    </section>
+  </div>
   <div class="mobile-bar" aria-label="移动端操作"><button type="button" id="previousStep">上一步</button><button type="button" id="mobileSummary">生成摘要</button><button type="button" id="nextStep" class="primary-step">下一步</button></div>
   <script src="core/risk-engine.js"></script>
   <script src="app.js?v=2.5.0-free"></script>
+  <script src="optional/auth-gated/auth.js?v=1.0.0"></script>
 </body>
 </html>
