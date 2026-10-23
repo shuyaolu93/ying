@@ -35,7 +35,9 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .logo{font-family:var(--serif);font-weight:900;font-size:16px;letter-spacing:.04em}
 .logo i{font-style:normal}
 .topnav{display:flex;gap:2px;flex-wrap:wrap;margin-left:auto}
-.tchip{background:transparent;border:none;color:var(--dim);font-size:13.5px;padding:7px 12px;border-radius:8px;border-bottom:2px solid transparent;transition:.15s}
+.tchip{background:transparent;border:none;color:var(--dim);font-size:13.5px;padding:7px 12px;border-radius:8px;border-bottom:2px solid transparent;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+.tchip::before{content:'▾';font-size:14px;line-height:1;color:var(--faint);transition:transform .15s,color .15s}
+.tchip[aria-expanded="false"]::before{content:'▸';color:var(--dim)}
 .tchip:hover{color:var(--text);background:var(--surface2)}
 .tchip.on{color:var(--text);font-weight:600;border-bottom-color:var(--text)}
 .theme-toggle{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);background:var(--surface);color:var(--dim);font-size:13px;padding:7px 13px;border-radius:999px;transition:.15s;white-space:nowrap}
@@ -54,11 +56,16 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 
 /* ---------- 章节 ---------- */
 .chapter{max-width:1120px;margin:0 auto;padding:40px 20px 6px}
-.ch-head{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:6px}
+.ch-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:6px}
 .ch-num{font-family:var(--mono);font-size:12px;color:var(--faint);letter-spacing:.08em}
 .ch-head h2{font-family:var(--serif);font-weight:900;font-size:22px}
 .ch-head .en{font-size:12px;color:var(--faint);font-family:var(--mono)}
-.ch-head .count{margin-left:auto;font-size:12px;color:var(--faint);font-family:var(--mono)}
+.ch-head .count{margin-left:0;font-size:12px;color:var(--faint);font-family:var(--mono)}
+.chapter-toggle{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--dim);font-size:12px;padding:5px 10px;white-space:nowrap}
+.chapter-toggle:hover{color:var(--text);border-color:var(--text)}
+.chapter-toggle .triangle{font-size:14px;line-height:1;transition:transform .15s}
+.chapter.collapsed .chapter-toggle .triangle{transform:rotate(-90deg)}
+.chapter-body[hidden]{display:none}
 .ch-note{font-size:13px;color:var(--faint);margin:0 0 22px;max-width:720px}
 
 /* ---------- 网格 ---------- */
@@ -240,9 +247,14 @@ function build(){
     const list=PATTERNS.filter(p=>p.ch===ch.id);
     if(!list.length)return '';
     return `<section class="chapter" id="${ch.id}">
-      <div class="ch-head"><span class="ch-num">${ch.num}</span><h2>${ch.name}</h2><span class="en">${ch.en}</span><span class="count">${list.length} 个形态</span></div>
-      <p class="ch-note">${ch.note}</p>
-      <div class="grid" style="margin-top:18px">${list.map(cardHTML).join('')}</div>
+      <div class="ch-head">
+        <span class="ch-num">${ch.num}</span><h2>${ch.name}</h2><span class="en">${ch.en}</span><span class="count">${list.length} 个形态</span>
+        <button class="chapter-toggle" type="button" data-chapter-toggle="${ch.id}" aria-controls="${ch.id}-body" aria-expanded="true"><span class="triangle" aria-hidden="true">▾</span><span class="toggle-label">折叠</span></button>
+      </div>
+      <div class="chapter-body" id="${ch.id}-body">
+        <p class="ch-note">${ch.note}</p>
+        <div class="grid" style="margin-top:18px">${list.map(cardHTML).join('')}</div>
+      </div>
     </section>`;
   }).join('');
 }
@@ -280,11 +292,38 @@ function openModal(id){
 function closeModal(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';}
 
 /* ---- 事件 ---- */
+function setChapterOpen(id, open, shouldScroll){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const body=el.querySelector('.chapter-body');
+  const toggle=el.querySelector('[data-chapter-toggle]');
+  const nav=document.querySelector('.tchip[data-goto="'+id+'"]');
+  el.classList.toggle('collapsed', !open);
+  if(body)body.hidden=!open;
+  if(toggle){
+    toggle.setAttribute('aria-expanded',String(open));
+    const label=toggle.querySelector('.toggle-label');
+    const triangle=toggle.querySelector('.triangle');
+    if(label)label.textContent=open?'折叠':'展开';
+    if(triangle)triangle.textContent=open?'▾':'▸';
+  }
+  if(nav)nav.setAttribute('aria-expanded',String(open));
+  if(shouldScroll)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function toggleChapter(id, shouldScroll){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const toggle=el.querySelector('[data-chapter-toggle]');
+  const open=!toggle || toggle.getAttribute('aria-expanded')!=='true';
+  setChapterOpen(id,open,shouldScroll);
+}
 document.querySelectorAll('.tchip').forEach(b=>{
-  b.addEventListener('click',()=>{
-    const el=document.getElementById(b.dataset.goto);
-    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-  });
+  b.setAttribute('aria-expanded','true');
+  b.addEventListener('click',()=>toggleChapter(b.dataset.goto,true));
+});
+document.getElementById('main').addEventListener('click',e=>{
+  const toggle=e.target.closest('[data-chapter-toggle]');
+  if(toggle)toggleChapter(toggle.dataset.chapterToggle,false);
 });
 document.getElementById('main').addEventListener('click',e=>{
   const cell=e.target.closest('.cell'); if(cell)openModal(cell.dataset.id);
