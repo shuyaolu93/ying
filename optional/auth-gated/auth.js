@@ -20,7 +20,7 @@
   function render() {
     var button = document.getElementById('accountButton'); if (!button) return;
     button.textContent = user ? (active() ? '账户 · ' + user.email : '兑换卡密 · ' + user.email) : '登录 / 注册';
-    button.classList.toggle('active', Boolean(user)); renderCenter();
+    button.classList.toggle('active', Boolean(user));
   }
   function close() { var modal = document.getElementById('authModal'); if (modal) modal.hidden = true; }
   function open() { var modal = document.getElementById('authModal'); if (modal) { modal.hidden = false; render(); } }
