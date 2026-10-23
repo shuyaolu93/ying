@@ -148,6 +148,14 @@ export default {
       const user = await authenticatedUser(request, env.DB); if (!user) return authRequired(user);
       try { const body = await request.json(); const password = String(body.password || ""); if (password.length < 8) return json({ error: "weak_password", message: "密码至少 8 位" }, 400); const salt = randomToken(); const hash = await passwordHash(password, salt); await env.DB.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").bind(hash, salt, user.id).run(); return json({ ok: true }); } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
+    if (url.pathname === "/api/messages" && request.method === "POST") {
+      const user = await authenticatedUser(request, env.DB); if (!user) return authRequired(user);
+      try { const body = await request.json(); const message = String(body.message || "").trim(); if (!message || message.length > 2000) return json({ error: "invalid_message", message: "留言不能为空且不能超过 2000 字" }, 400); await env.DB.prepare("INSERT INTO messages (user_id, message) VALUES (?, ?)").bind(user.id, message).run(); return json({ ok: true }); } catch (error) { return json({ error: "message_save_failed", message: error.message }, 400); }
+    }
+    if (url.pathname === "/api/admin/messages" && request.method === "GET") {
+      const secret = request.headers.get("x-admin-secret") || ""; if (!env.ADMIN_SECRET || secret !== env.ADMIN_SECRET) return json({ error: "forbidden", message: "管理员权限不足" }, 403);
+      const rows = await env.DB.prepare("SELECT m.id, m.message, m.created_at, u.email FROM messages m JOIN users u ON u.id = m.user_id ORDER BY m.id DESC LIMIT 500").all(); return json({ messages: rows.results || [] });
+    }
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       const user = await authenticatedUser(request, env.DB); return user ? json({ user: publicUser(user) }) : authRequired(user);
     }
