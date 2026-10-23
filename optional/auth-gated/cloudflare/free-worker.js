@@ -127,9 +127,9 @@ export default {
     if (url.pathname === "/api/auth/register" && request.method === "POST") {
       try {
         const body = await request.json(); const email = String(body.email || "").trim().toLowerCase(); const password = String(body.password || "");
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "invalid_email", message: "请输入有效邮箱" }, 400);
+        if (!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || /^\d{8,}$/.test(email))) return json({ error: "invalid_account", message: "账号需为有效邮箱或 8 位以上数字" }, 400);
         if (password.length < 8) return json({ error: "weak_password", message: "密码至少 8 位" }, 400);
-        if (await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first()) return json({ error: "email_exists", message: "该邮箱已注册，请直接登录" }, 409);
+        if (await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first()) return json({ error: "email_exists", message: "该账号已注册，请直接登录" }, 409);
         const salt = randomToken(); const hash = await passwordHash(password, salt);
         const result = await env.DB.prepare("INSERT INTO users (email, password_hash, password_salt) VALUES (?, ?, ?)").bind(email, hash, salt).run();
         const user = { id: result.meta.last_row_id, email, entitlement_until: null }; const session = await createSession(env.DB, user);
@@ -143,6 +143,10 @@ export default {
         if (!user || (await passwordHash(password, user.password_salt)) !== user.password_hash) return json({ error: "invalid_credentials", message: "邮箱或密码不正确" }, 401);
         const session = await createSession(env.DB, user); return json({ user: publicUser(user), token: session.token, expiresAt: session.expiresAt });
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
+    }
+    if (url.pathname === "/api/auth/password" && request.method === "POST") {
+      const user = await authenticatedUser(request, env.DB); if (!user) return authRequired(user);
+      try { const body = await request.json(); const password = String(body.password || ""); if (password.length < 8) return json({ error: "weak_password", message: "密码至少 8 位" }, 400); const salt = randomToken(); const hash = await passwordHash(password, salt); await env.DB.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").bind(hash, salt, user.id).run(); return json({ ok: true }); } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       const user = await authenticatedUser(request, env.DB); return user ? json({ user: publicUser(user) }) : authRequired(user);
