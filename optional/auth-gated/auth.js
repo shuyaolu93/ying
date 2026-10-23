@@ -14,8 +14,8 @@
   }
   function show(message, good) { var note = document.getElementById('authNote'); if (!note) return; note.textContent = message; note.className = 'auth-note ' + (good ? 'good' : 'bad'); }
   function coverMessage(message, good) { var note = document.getElementById('coverNote'); if (!note) return; note.textContent = message || ''; note.style.color = good ? '#2f7d5c' : '#b63b2b'; }
-  function enterApp() { document.body.classList.remove('auth-gated'); coverMessage(''); }
-  function showCover(message) { document.body.classList.add('auth-gated'); if (message) coverMessage(message); }
+  function enterApp() { document.body.classList.remove('auth-pending'); document.body.classList.remove('auth-gated'); coverMessage(''); }
+  function showCover(message) { document.body.classList.remove('auth-pending'); document.body.classList.add('auth-gated'); if (message) coverMessage(message); }
   function active() { return Boolean(user && user.active && new Date(user.entitlementUntil).getTime() > Date.now()); }
   function render() {
     var button = document.getElementById('accountButton'); if (!button) return;
