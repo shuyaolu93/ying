@@ -64,3 +64,12 @@ CREATE TABLE IF NOT EXISTS code_redemptions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
