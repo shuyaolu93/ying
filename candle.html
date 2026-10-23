@@ -77,11 +77,11 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .cell{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;display:flex;flex-direction:column;text-align:left;color:inherit;min-width:0}
 .cell:hover{border-color:var(--line2);box-shadow:var(--shadow);transform:translateY(-1px)}
 .cell:focus-visible{outline:2px solid var(--text);outline-offset:2px}
-.cell .cv{width:100%;height:46px;display:block;margin-bottom:12px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:5px 6px}
+.cell .cv{width:100%;height:132px;display:block;margin-bottom:13px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
 .cell .cv svg{width:100%;height:100%;display:block}
+.cell .title-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .cell .cn{font-family:var(--serif);font-weight:700;font-size:16.5px;line-height:1.35}
-.cell .en{font-size:11px;color:var(--faint);font-family:var(--mono);margin-top:2px}
-.cell .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.cell .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .tag{font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--dim);background:var(--surface2)}
 .tag.up{color:var(--up);border-color:rgba(229,72,77,.35);background:rgba(229,72,77,.06)}
 .tag.down{color:var(--down);border-color:rgba(47,158,99,.35);background:rgba(47,158,99,.06)}
@@ -98,31 +98,37 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .m-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .m-top .ch{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.08em}
 .m-top h2{font-family:var(--serif);font-size:26px;font-weight:900}
-.m-top .en{font-size:12px;color:var(--faint);font-family:var(--mono)}
 .m-tags{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 6px}
-.m-candle{width:100%;height:200px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px;margin:14px 0}
+.m-candle{width:100%;height:210px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:14px 0}
 .m-candle svg{width:100%;height:100%}
 .m-sec{font-size:11px;color:var(--faint);letter-spacing:.14em;margin:22px 0 8px;display:flex;align-items:center;gap:10px}
 .m-sec::before{content:"";width:20px;height:1px;background:var(--line2)}
 .m-body p{color:var(--dim);font-size:14.5px;margin-bottom:10px}
 .m-note{background:var(--surface2);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--text)}
-.case{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.case{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
 .case .ct{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--faint);margin-bottom:8px}
 .case .ct b{color:var(--text);font-weight:600;font-family:var(--mono)}
-.case .case-chart{width:100%;height:300px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;margin:12px 0}
-.case .case-chart svg{width:100%;height:100%}
+.case .case-chart{width:100%;height:340px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;margin:12px 0;overflow-x:auto}
+.case .case-chart svg{width:100%;min-width:620px;height:100%;display:block}
 .case p{color:var(--dim);font-size:14px;margin:0}
+.case .chart-label{font-size:12px;font-weight:700;color:var(--text);margin-top:12px}
+.case .chart-hint{font-size:12px;color:var(--dim);margin:4px 0 8px}
+.case .mark-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.case .mark-list span{font-size:12px;color:var(--text);background:var(--surface);border:1px solid var(--line2);border-radius:7px;padding:4px 8px}
+.case .mark-list b{color:#3B82F6;margin-right:4px}
 
 /* ---------- 案例双图布局 ---------- */
-.case-figs{display:grid;grid-template-columns:1fr;gap:20px}
+.case-figs{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;min-width:0}
+.case-fig{min-width:0}
 @media(min-width:900px){.case-figs.two{grid-template-columns:1fr 1fr;gap:24px}}
-.fig-cap{font-size:12px;color:var(--faint);margin:2px 0 0;line-height:1.55}
+.fig-cap{font-size:14px;color:var(--text);font-weight:600;margin:2px 0 0;line-height:1.55}
 
 /* ---------- SVG 图表主题色（内联 SVG 随 data-theme 切换） ---------- */
 .kv-wick{stroke-width:1.6;stroke-linecap:round}
 .kv-body{stroke-width:0}
 .kv-up{fill:var(--up);stroke:var(--up)}
 .kv-down{fill:var(--down);stroke:var(--down)}
+.kv-neutral{fill:var(--dim);stroke:var(--dim)}
 .kv-grid{stroke:var(--line);stroke-width:1}
 .kv-tick{fill:var(--faint);font-size:10px;font-family:var(--mono)}
 .kv-date{fill:var(--faint);font-size:10.5px}
@@ -132,14 +138,19 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 html[data-theme="dark"] .kv-sup{stroke:#60A5FA}
 html[data-theme="dark"] .kv-res{stroke:#FBBF24}
 html[data-theme="dark"] .kv-tline{stroke:#8E8E99}
-.kv-tlab{font-size:10.5px;stroke:none}
+.kv-tlab{font-size:13px;stroke:none;font-weight:700}
 .kv-tlab.kv-sup{fill:#3B82F6}
 .kv-tlab.kv-res{fill:#F59E0B}
 .kv-tlab.kv-tline{fill:var(--dim)}
 html[data-theme="dark"] .kv-tlab.kv-sup{fill:#60A5FA}
 html[data-theme="dark"] .kv-tlab.kv-res{fill:#FBBF24}
-.kv-markdot{fill:var(--dim)}
-.kv-marklab{fill:var(--dim);font-size:10.5px}
+.kv-markdot{fill:#3B82F6}
+.kv-marklab{fill:var(--text);font-size:16px;font-weight:800;paint-order:stroke;stroke:var(--surface);stroke-width:4px}
+.kv-gap{fill:rgba(59,130,246,.2);stroke:#3B82F6;stroke-width:1}
+.scheme-trend{fill:none;stroke:var(--faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.scheme-guide{stroke:var(--dim);stroke-width:1.5;stroke-dasharray:5 4}
+.scheme-text{font:12px var(--sans);fill:var(--dim)}
+.scheme-gap{fill:rgba(59,130,246,.12);stroke:rgba(59,130,246,.55);stroke-width:1}
 
 footer{border-top:1px solid var(--line);margin-top:52px;padding:32px 20px 56px;text-align:center;color:var(--faint);font-size:12px}
 footer b{color:var(--dim);font-weight:500}
@@ -191,7 +202,7 @@ body.auth-pending{visibility:hidden!important}
 <header class="hero">
   <div class="eyebrow">STEVE NISON · JAPANESE CANDLESTICK CHARTING</div>
   <h1>日本蜡烛图技术<br>形态与案例图谱</h1>
-  <p>依据史蒂夫·尼森《日本蜡烛图技术（第 2 版）》（丁圣元译）逐章整理：每个形态配示意图、形态定义、识别要点，以及书中真实图例作为案例（标的、周期、时间与价格过程）。</p>
+  <p>依据史蒂夫·尼森《日本蜡烛图技术（第 2 版）》（丁圣元译）逐章整理。卡片展示形态教学示意；详情中的案例走势按书中图例重绘，用来理解标的、周期和价格过程。</p>
   <div class="meta">
     <span>形态收录 <b id="mTotal">0</b></span>
     <span>按书中章节分类 <b>第四章 ~ 术语表B</b></span>
@@ -206,19 +217,19 @@ body.auth-pending{visibility:hidden!important}
   <div class="backdrop" data-close></div>
   <div class="panel">
     <button class="close" data-close aria-label="关闭">×</button>
-    <div class="m-top"><span class="ch" id="mCh"></span><h2 id="mTitle"></h2><span class="en" id="mEn"></span></div>
+    <div class="m-top"><span class="ch" id="mCh"></span><h2 id="mTitle"></h2></div>
     <div class="m-tags" id="mTags"></div>
     <div class="m-candle" id="mCandle"></div>
     <div class="m-sec">形态定义</div>
     <div class="m-body" id="mBody"></div>
     <div class="m-sec">识别要点</div>
     <div class="m-note" id="mNote"></div>
-    <div class="m-sec">书中案例</div>
+    <div class="m-sec">图例与说明</div>
     <div class="case" id="mCase"></div>
   </div>
 </div>
 
-<footer>内容整理自《日本蜡烛图技术（第 2 版）》史蒂夫·尼森著，丁圣元译；蜡烛图为示意绘制，非真实行情。<br><b>仅供学习参考，不构成任何投资建议。</b></footer>
+<footer>内容整理自《日本蜡烛图技术（第 2 版）》史蒂夫·尼森著，丁圣元译；形态与案例行情均为重绘示意，非原书图像或原始行情数据。<br><b>仅供学习参考，不构成任何投资建议。</b></footer>
 
 <script>
 const UP='#E5484D', DOWN='#2F9E63';
@@ -256,22 +267,35 @@ let PATTERNS=[];
 <script src="assets/data3.js"></script>
 <script src="assets/data4.js"></script>
 <script src="assets/data5.js"></script>
+<script src="assets/schematics.js"></script>
 <script>
 /* ---- 蜡烛渲染 ---- */
-function candleSVG(arr){
-  arr=arr||[];
-  const W=150,H=100,P=9;
-  let lo=Infinity,hi=-Infinity;
-  arr.forEach(c=>{lo=Math.min(lo,c[2]);hi=Math.max(hi,c[1]);});
-  if(!isFinite(lo)){lo=0;hi=1;}
-  const span=(hi-lo)||1,n=arr.length||1,step=(W-2*P)/n,bw=Math.max(1.1,step*0.55);
-  const y=v=>P+(H-2*P)*(hi-v)/span;
-  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-hidden="true">`;
+function schematicSVG(p,detail=false){
+  const arr=schematicFor(p),W=380,H=160;
+  const y=v=>143-1.22*v;
+  const step=Math.min(66,260/arr.length),start=(W-step*arr.length)/2;
+  const x=i=>start+step*(i+.5);
+  const bw=Math.min(42,step*.64);
+  const before=p.sig==='看涨'||/bottom|bot|southern|inverted-hammer/.test(p.id);
+  const after=p.sig==='看跌'||/top|northern/.test(p.id);
+  const trendEnd=x(0)-step*.55;
+  const trendY=before?104:(after?62:83);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${p.cn}形态示意图">`;
+  s+=`<path class="scheme-trend" d="M 16 ${before?34:after?119:72} L 38 ${before?53:after?100:83} L 50 ${before?46:after?107:76} L ${trendEnd} ${trendY}"/>`;
+  if(detail&&p.id==='dark-cloud'){
+    const mid=(arr[0][0]+arr[0][3])/2;
+    s+=`<line class="scheme-guide" x1="${x(0)+bw/2}" y1="${y(mid)}" x2="${x(1)+32}" y2="${y(mid)}"/><text class="scheme-text" x="${x(1)+34}" y="${y(mid)+4}">前阳线中点</text>`;
+  }
+  if(detail&&/window|gap|tasuki/.test(p.id)&&arr.length>1){
+    const a=arr[0],b=arr[1];
+    const gap=b[2]>a[1]?[b[2],a[1]]:(b[1]<a[2]?[a[2],b[1]]:null);
+    if(gap)s+=`<rect class="scheme-gap" x="${x(0)+bw/2+3}" y="${y(gap[0])}" width="${Math.max(8,x(1)-x(0)-bw-6)}" height="${y(gap[1])-y(gap[0])}"/>`;
+  }
   arr.forEach((c,i)=>{
-    const cx=P+i*step+step/2,up=c[3]>=c[0],cls=up?'kv-up':'kv-down';
+    const cx=x(i),cls=c[3]>c[0]?'kv-up':(c[3]<c[0]?'kv-down':'kv-neutral');
     s+=`<line class="kv-wick ${cls}" x1="${cx}" y1="${y(c[1])}" x2="${cx}" y2="${y(c[2])}"/>`;
-    const oy=y(c[0]),cy=y(c[3]),bt=Math.min(oy,cy),bh=Math.max(Math.abs(cy-oy),1.4);
-    s+=`<rect class="kv-body ${cls}" x="${cx-bw/2}" y="${bt}" width="${bw}" height="${bh}"/>`;
+    const top=Math.min(y(c[0]),y(c[3])),height=Math.max(Math.abs(y(c[3])-y(c[0])),3);
+    s+=`<rect class="kv-body ${cls}" x="${cx-bw/2}" y="${top}" width="${bw}" height="${height}"/>`;
   });
   return s+'</svg>';
 }
@@ -297,7 +321,7 @@ function caseChartSVG(series,opts){
   series=series||[];
   const trend=opts.trend||[], marks=opts.marks||[], dates=opts.dates||[];
   const H=opts.height||300;
-  const W=760,padL=46,padR=12,padT=10,padB=22;
+  const W=opts.width||760,padL=46,padR=12,padT=10,padB=22;
   const plotW=W-padL-padR,plotH=H-padT-padB;
   const n=series.length||1;
   let lo=Infinity,hi=-Infinity;
@@ -310,12 +334,21 @@ function caseChartSVG(series,opts){
   const y=v=>padT+plotH*(hi-v)/(hi-lo);
   const x=i=>padL+(i+0.5)*step;
   const ticks=niceTicks(lo,hi,4);
-  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-hidden="true">`;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="案例价格走势图">`;
   ticks.forEach(t=>{
     const ty=y(t);
     s+=`<line class="kv-grid" x1="${padL}" y1="${ty}" x2="${W-padR}" y2="${ty}"/>`;
     s+=`<text class="kv-tick" x="${padL-6}" y="${ty+3}" text-anchor="end">${fmtPrice(t)}</text>`;
   });
+  if(opts.showGaps){
+    for(let i=1;i<series.length;i++){
+      const a=series[i-1],b=series[i];
+      const gap=b[2]>a[1]?[b[2],a[1]]:(b[1]<a[2]?[a[2],b[1]]:null);
+      if(!gap)continue;
+      const gx=x(i-1)+bw/2+2,gw=Math.max(4,x(i)-x(i-1)-bw-4);
+      s+=`<rect class="kv-gap" x="${gx}" y="${y(gap[0])}" width="${gw}" height="${Math.max(3,y(gap[1])-y(gap[0]))}"/>`;
+    }
+  }
   series.forEach((c,i)=>{
     const cx=x(i),up=c[3]>=c[0],cls=up?'kv-up':'kv-down';
     s+=`<line class="kv-wick ${cls}" x1="${cx}" y1="${y(c[1])}" x2="${cx}" y2="${y(c[2])}"/>`;
@@ -336,7 +369,8 @@ function caseChartSVG(series,opts){
       if(p===0){if(q<0){ok=false;break;}}
       else{const r=q/p;if(p<0){if(r>t1)ok=false;if(r>t0)t0=r;}else{if(r<t0)ok=false;if(r<t1)t1=r;}}
     }
-    if(ok&&t1>t0){x1=x1+t0*dx;y1=y1+t0*dy;x2=x1+t1*dx;y2=y1+t1*dy;}
+    if(!ok||t1<=t0)return;
+    const sx=x1,sy=y1;x1=sx+t0*dx;y1=sy+t0*dy;x2=sx+t1*dx;y2=sy+t1*dy;
     s+=`<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
     if(t.label){
       const mx=Math.min(Math.max((x1+x2)/2,minX+24),maxX-24),my=Math.min(Math.max((y1+y2)/2,minY+10),maxY-6);
@@ -349,7 +383,6 @@ function caseChartSVG(series,opts){
     s+=`<circle class="kv-markdot" cx="${mx}" cy="${my}" r="3"/>`;
     if(m.label)s+=`<text class="kv-marklab" x="${mx+6}" y="${my-4}">${m.label}</text>`;
   });
-  s+=`</g>`;
   const k=Math.max(1,Math.ceil(n/6));
   for(let i=0;i<n;i+=k){
     if(dates[i])s+=`<text class="kv-date" x="${x(i)}" y="${H-7}" text-anchor="middle">${dates[i]}</text>`;
@@ -358,10 +391,27 @@ function caseChartSVG(series,opts){
 }
 function caseFigHTML(o){
   o=o||{};
-  const svg=caseChartSVG(o.candle,{trend:o.trend,marks:o.marks,dates:o.dates,height:300});
+  const bookFigure=Boolean(o.fig);
+  const showGaps=/gap|window|tasuki/.test(o.id||'');
+  const numberedMarks=(o.marks||[]).map((m,i)=>({...m,label:String(i+1)}));
+  const svg=caseChartSVG(o.candle,{trend:o.trend,marks:numberedMarks,dates:o.dates,height:300,showGaps});
+  const all=o.candle||[];
+  const relevant=(o.marks||[]).find(m=>m.label&&o.cn&&m.label.includes(o.cn.slice(0,2)));
+  const focusAt=typeof o.focus==='number'?o.focus:(relevant||((o.marks||[])[0])||{}).x;
+  const center=Number.isFinite(focusAt)?Math.round(focusAt):Math.max(0,all.length-5);
+  const from=Math.max(0,Math.min(center-4,all.length-9));
+  const to=Math.min(all.length,from+9);
+  const focusedMarks=numberedMarks.filter(m=>m.x>=from&&m.x<to).map(m=>({...m,x:m.x-from}));
+  const focusedDates=(o.dates||[]).slice(from,to);
+  const detailSvg=all.length>9?caseChartSVG(all.slice(from,to),{marks:focusedMarks,dates:focusedDates,height:260,width:620,showGaps}):'';
+  const marks=(o.marks||[]).filter(m=>m&&m.label).map((m,i)=>`<span><b>${i+1}</b> ${m.label}</span>`).join('');
   return `<div class="case-fig">`+
     (o.fig?`<div class="fig-cap">${o.fig}</div>`:'')+
+    (detailSvg?`<div class="chart-label">关键位置放大</div><div class="case-chart">${detailSvg}</div>`:'')+
+    `<div class="chart-label">${bookFigure?'书中图例走势重绘':'概念示意重绘'}</div>`+
+    `<div class="chart-hint">${bookFigure?'依据书中图例文字和关键位置示意':'依据书中概念绘制'}；可横向滑动查看，非原书图像或精确行情数据。${showGaps?'蓝色区间表示价格跳空。':''}</div>`+
     `<div class="case-chart">${svg}</div>`+
+    (marks?`<div class="mark-list">${marks}</div>`:'')+
     `<div class="ct"><span>标的：<b>${o.t||''}</b></span><span>周期：<b>${o.f||''}</b></span><span>时间：<b>${o.d||''}</b></span></div>`+
     `<p>${o.c||''}</p></div>`;
 }
@@ -388,10 +438,9 @@ function build(){
 function cardHTML(p){
   const s=p.sig==='看涨'?'up':(p.sig==='看跌'?'down':'neu');
   return `<button class="cell" data-id="${p.id}" aria-label="查看 ${p.cn} 详情">
-    <span class="cv">${candleSVG(p.candle)}</span>
-    <span class="cn">${p.cn}</span>
-    <span class="en">${p.en}</span>
-    <span class="tags"><span class="tag ${s}">${p.sig}</span><span class="tag">${p.kind}</span></span>
+    <span class="cv">${schematicSVG(p)}</span>
+    <span class="title-row"><span class="tag">${p.kind}</span><span class="cn">${p.cn}</span></span>
+    <span class="tags"><span class="tag ${s}">${p.sig}</span></span>
     <span class="ds">${p.desc}</span>
   </button>`;
 }
@@ -405,16 +454,19 @@ function openModal(id){
   const ch=CHAPTERS.find(c=>c.id===p.ch);
   document.getElementById('mCh').textContent=(ch?ch.num+' '+ch.name:'');
   document.getElementById('mTitle').textContent=p.cn;
-  document.getElementById('mEn').textContent=p.en;
   document.getElementById('mTags').innerHTML=tagHTML(p);
-  document.getElementById('mCandle').innerHTML=caseChartSVG(p.candle,{height:200});
+  document.getElementById('mCandle').innerHTML=schematicSVG(p,true);
   document.getElementById('mBody').innerHTML=`<p>${p.def}</p>`;
   document.getElementById('mNote').textContent=p.note;
   const cs1=p.case||{};
-  const figs=[caseFigHTML({candle:p.candle,trend:p.trend,marks:p.marks,dates:p.dates,fig:p.fig,t:cs1.t,f:cs1.f,d:cs1.d,c:cs1.c})];
+  const figs=[caseFigHTML({id:p.id,cn:p.cn,focus:p.focus,candle:p.candle,trend:p.trend,marks:p.marks,dates:p.dates,fig:p.fig,t:cs1.t,f:cs1.f,d:cs1.d,c:cs1.c})];
   if(p.case2)figs.push(caseFigHTML({candle:p.case2.candle,trend:p.case2.trend,marks:p.case2.marks,dates:p.case2.dates,fig:p.case2.fig,t:p.case2.t,f:p.case2.f,d:p.case2.d,c:p.case2.c}));
   document.getElementById('mCase').innerHTML=`<div class="case-figs${p.case2?' two':''}">${figs.join('')}</div>`;
   document.getElementById('modal').classList.add('open');
+  document.querySelectorAll('#mCase .case-fig').forEach(fig=>{
+    const zoom=fig.querySelector('.case-chart');
+    if(zoom&&fig.querySelectorAll('.case-chart').length>1)zoom.scrollLeft=(zoom.scrollWidth-zoom.clientWidth)/2;
+  });
   document.body.style.overflow='hidden';
 }
 function closeModal(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';}
@@ -469,6 +521,12 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 document.getElementById('themeToggle').addEventListener('click',()=>{
   applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
 });
+if(window.matchMedia('(max-width:700px)').matches){
+  chapterNavWrap.classList.add('collapsed');
+  chapterNavToggle.setAttribute('aria-expanded','false');
+  chapterNavToggle.querySelector('.triangle').textContent='▸';
+  chapterNavToggle.querySelector('.chapter-nav-label').textContent='展开章节';
+}
 build();
 </script>
 <script src="./optional/auth-gated/candle-gate.js?v=1.1.0"></script>
