@@ -1,1 +1,42 @@
-(function(){'use strict';var API='https://ronghe-risk-free.shuyaolu93.workers.dev';var key='rongheAuthTokenV1';var t='';try{t=localStorage.getItem(key)||''}catch(e){}function block(msg){document.body.classList.remove('auth-pending');document.body.innerHTML='<main style="max-width:560px;margin:18vh auto;padding:32px;text-align:center;font-family:system-ui;color:#171717"><h1>日本蜡烛图</h1><p>'+msg+'</p><a href="./index.html" style="display:inline-block;padding:12px 20px;border:1px solid #aaa;border-radius:999px;text-decoration:none;color:inherit">返回登录并兑换卡密</a></main>'}if(!t){block('请先登录账号并兑换有效卡密后使用。');return}fetch(API+'/api/auth/me',{headers:{authorization:'Bearer '+t}}).then(function(r){return r.json().then(function(x){if(!r.ok||!x.user||!x.user.active)throw 0;document.body.classList.remove('auth-pending')})}).catch(function(){block('登录已失效或卡密已到期，请重新登录并兑换。')})}());
+(function () {
+  'use strict';
+  var API = 'https://ronghe-risk-free.shuyaolu93.workers.dev';
+  var token = '';
+  var blocked = false;
+  var checking = false;
+  var interval = null;
+  try { token = localStorage.getItem('rongheAuthTokenV1') || ''; } catch (error) {}
+
+  function block(message) {
+    if (blocked) return;
+    blocked = true;
+    if (interval) clearInterval(interval);
+    document.body.classList.remove('auth-pending');
+    document.body.innerHTML = '<main style="max-width:560px;margin:18vh auto;padding:32px;text-align:center;font-family:system-ui;color:#171717"><h1>日本蜡烛图</h1><p>' + message + '</p><a href="./index.html" style="display:inline-block;padding:12px 20px;border:1px solid #aaa;border-radius:999px;text-decoration:none;color:inherit">返回登录并兑换卡密</a></main>';
+  }
+
+  function check() {
+    if (blocked || checking) return;
+    checking = true;
+    fetch(API + '/api/auth/me', { cache: 'no-store', headers: { authorization: 'Bearer ' + token } })
+      .then(function (response) {
+        return response.json().then(function (data) {
+          if (!response.ok || !data.user || !data.user.active ||
+              new Date(data.user.entitlementUntil).getTime() <= Date.now()) throw new Error('inactive');
+          document.body.classList.remove('auth-pending');
+        });
+      })
+      .catch(function () { block('登录已失效或卡密已到期，请重新登录并兑换。'); })
+      .finally(function () { checking = false; });
+  }
+
+  if (!token) {
+    block('请先登录账号并兑换有效卡密后使用。');
+    return;
+  }
+  check();
+  interval = setInterval(check, 60000);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) check();
+  });
+}());

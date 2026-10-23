@@ -32,10 +32,15 @@
     var until = user && user.entitlementUntil ? new Date(user.entitlementUntil) : null;
     var exp = document.getElementById('profileExpiry'); if (exp) exp.textContent = '卡密到期日：' + (until && !isNaN(until) ? until.toLocaleString('zh-CN') : '未兑换');
     var list = document.getElementById('myMessages');
-    if (list && ok) {
+    if (list) {
+      list.hidden = !ok || String(user.email) !== '1234567890';
+      if (list.hidden) list.textContent = '';
+    }
+    if (list && ok && !list.hidden) {
       request('/api/messages').then(function (data) {
         list.innerHTML = (data.messages || []).map(function (x) {
-          return '<p><b>' + String(x.email || '') + '</b>：' + String(x.message || '').replace(/[&<>]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }) + '</p>';
+          function escape(text) { return String(text || '').replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+          return '<p><b>' + escape(x.email) + '</b>：' + escape(x.message) + '</p>';
         }).join('') || '<small>暂无留言</small>';
       }).catch(function () { list.innerHTML = ''; });
     }
@@ -58,7 +63,7 @@
     return Promise.resolve(window.RongheDesk ? window.RongheDesk.setAccount(scope) : null).then(function () {
       if (epoch !== authEpoch) return;
       if (active()) { close(); enterApp(); }
-      else if (user) { coverMessage('请兑换有效卡密后进入研究室'); open(); }
+      else if (user) { close(); coverMessage('请兑换有效卡密后进入研究室'); }
     });
   }
   function save(data) {
@@ -73,7 +78,7 @@
     authEpoch += 1; token = ''; user = null;
     try { localStorage.removeItem(tokenKey); } catch (error) {}
     if (window.RongheDesk) window.RongheDesk.setAccount(null);
-    render(); showCover();
+    close(); render(); showCover();
   }
   function logout() {
     request('/api/auth/logout', { method: 'POST' }).catch(function () {});
@@ -98,7 +103,7 @@
     document.getElementById('authRedeem').addEventListener('click', function () { if (!token) return show('请先登录'); request('/api/auth/redeem', { method: 'POST', body: JSON.stringify({ code: document.getElementById('authCode').value.trim() }) }).then(function (data) { return save(data).then(function () { var until = data.user && data.user.entitlementUntil ? String(data.user.entitlementUntil).slice(0, 10) : '未知'; show('兑换成功，有效期至 ' + until, true); }); }).catch(function (error) { show(error.message); }); });
     document.getElementById('authLogout').addEventListener('click', logout);
     document.getElementById('changePassword').addEventListener('click', function(){var p=document.getElementById('newPassword').value;if(p.length<8)return show('新密码至少 8 位');request('/api/auth/password',{method:'POST',body:JSON.stringify({password:p})}).then(function(){show('密码修改成功，请重新登录',true);setTimeout(logout,600)}).catch(function(e){show(e.message)});});
-    document.getElementById('sendMessage').addEventListener('click', function(){var f=document.getElementById('messageInput'),v=f.value.trim();if(!v)return show('请输入留言');request('/api/messages',{method:'POST',body:JSON.stringify({message:v})}).then(function(){f.value='';show('留言已提交',true)}).catch(function(e){show(e.message)});});
+    document.getElementById('sendMessage').addEventListener('click', function(){var f=document.getElementById('messageInput'),v=f.value.trim();if(!v)return show('请输入留言');request('/api/messages',{method:'POST',body:JSON.stringify({message:v})}).then(function(){f.value='';show('留言已提交',true);if(user && String(user.email)==='1234567890')renderProfile()}).catch(function(e){show(e.message)});});
     document.getElementById('headerLogout').addEventListener('click', logout);
     renderProfile(); if (document.getElementById('coverAccount')) document.getElementById('coverAccount').addEventListener('click', open);
     var coverForm = document.getElementById('coverAuthForm');

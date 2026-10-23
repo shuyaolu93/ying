@@ -1,13 +1,12 @@
-# 可选登录与卡密模块
+# Ying 登录与卡密模块
 
-这里保留了免费公开版暂时不启用的认证与付费代码：
+此目录包含 Ying 网页当前使用的账号、卡密和个人中心代码。
 
-- `auth.js`：前端登录、注册、会话与兑换逻辑。
-- `admin.html`：卡密生成后台。
-- `cloudflare/`：Cloudflare Worker、D1 数据库结构及部署配置。
-- `core/risk-panel.js`：依赖 Worker 与认证令牌的云端风控面板。
-- `tests/browser-regression.cjs`：原认证版的浏览器回归测试。
+- `auth.js`：交易决策研究室的登录、注册、兑换、个人中心和留言界面。
+- `candle-gate.js`：日本蜡烛图页面的登录和卡密有效期检查。
+- `admin.html`：卡密生成后台页面。
+- `cloudflare/free-worker.js`：Cloudflare Worker 的账号、卡密和留言接口。
+- `cloudflare/schema.sql`：D1 数据表结构。
+- `core/risk-panel.js`：可选的云端风控面板。
 
-免费版的根目录 `index.html` 不再加载 `auth.js`，也不再展示登录封面、账户按钮或卡密兑换入口。`app.js` 使用 `:public` 本地存储命名空间，所有草稿和快照只保存在当前浏览器。
-
-重新启用时，需要把本目录的认证界面和脚本按版本控制中的本次拆分前版本恢复到根目录，并恢复账户分区存储；部署 Worker 前还必须设置 `ADMIN_SECRET`，初始化 D1 数据库，并完成安全与并发问题的复查。
+前端部署在 GitHub Pages。账号、密码哈希、卡密和留言存储在 Cloudflare D1；研究草稿与决策快照保存在用户当前浏览器，并按账号区分。部署 Worker 时需要配置 D1 绑定和 `ADMIN_SECRET`，详见 [`cloudflare/FREE_PLAN.md`](cloudflare/FREE_PLAN.md)。
