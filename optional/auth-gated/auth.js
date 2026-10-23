@@ -87,6 +87,13 @@
       coverMessage('正在创建账户…');
       request('/api/auth/register', { method: 'POST', body: JSON.stringify({ email: coverEmail.value, password: coverPassword.value }) }).then(function (data) { save(data); }).catch(function (error) { coverMessage(error.message); });
     });
+    if (document.getElementById('coverRedeem')) document.getElementById('coverRedeem').addEventListener('click', function () {
+      var code = document.getElementById('coverCode').value.trim();
+      if (!token) return coverMessage('请先登录账号，再兑换卡密');
+      if (!code) return coverMessage('请输入卡密');
+      coverMessage('正在兑换…');
+      request('/api/auth/redeem', { method: 'POST', body: JSON.stringify({ code: code }) }).then(function (data) { return save(data).then(function () { coverMessage('兑换成功，有效期至 ' + String(data.user.entitlementUntil || '').slice(0, 10), true); }); }).catch(function (error) { coverMessage(error.message); });
+    });
     if (token) request('/api/auth/me').then(function (data) { return save(data); }).catch(clear); else { render(); showCover(); }
     window.setInterval(function () {
       if (!user) return;
