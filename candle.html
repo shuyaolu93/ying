@@ -111,8 +111,17 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .case .chart-frame{position:relative;margin:12px 0}
 .case .case-chart{width:100%;height:340px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;overflow-x:auto}
 .case .case-chart.with-subchart{height:390px}
-.case .case-chart svg{width:100%;height:100%;display:block}
+.case .case-chart svg{width:100%;height:100%;display:block;margin:0 auto}
+.chart-crosshair{position:absolute;inset:0;border-radius:10px;overflow:hidden;pointer-events:none;display:none;z-index:2}
+.chart-crosshair.active{display:block}
+.chart-crosshair .cross-v,.chart-crosshair .cross-h{position:absolute;border-color:#3286df;opacity:.85}
+.chart-crosshair .cross-v{left:var(--cross-x);top:0;bottom:0;border-left:1px dashed}
+.chart-crosshair .cross-h{top:var(--cross-y);left:0;right:0;border-top:1px dashed}
+.chart-crosshair .cross-price,.chart-crosshair .cross-date{position:absolute;background:#2871bd;color:white;border-radius:3px;padding:1px 4px;font:11px var(--mono);white-space:nowrap}
+.chart-crosshair .cross-price{right:2px;top:var(--cross-y);transform:translateY(-50%)}
+.chart-crosshair .cross-date{bottom:2px;left:var(--cross-x);transform:translateX(-50%)}
 .chart-controls{position:absolute;right:16px;bottom:16px;display:flex;gap:5px;padding:4px;background:var(--surface);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow)}
+.chart-controls{z-index:3}
 .chart-controls button{width:32px;height:32px;border:1px solid var(--line2);border-radius:7px;background:var(--surface2);color:var(--text);font-size:20px;line-height:1;display:grid;place-items:center;cursor:pointer}
 .chart-controls button:hover{border-color:var(--text)}
 .chart-controls button:disabled{opacity:.4;cursor:default}
@@ -157,6 +166,7 @@ html[data-theme="dark"] .kv-tlab.kv-res{fill:#FBBF24}
 .kv-ma-slow{fill:none;stroke:#e18a00;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .kv-ind-main{fill:none;stroke:#1686d9;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .kv-ind-signal{fill:none;stroke:#e18a00;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.kv-ind-hist-up{fill:#30a46c;opacity:.8}.kv-ind-hist-down{fill:#ef4d52;opacity:.8}
 .kv-volume-up{fill:var(--up);opacity:.78}.kv-volume-down{fill:var(--down);opacity:.78}
 .kv-panel-label{fill:var(--dim);font-size:11px;font-weight:700}.kv-panel-grid{stroke:var(--line2);stroke-width:1;stroke-dasharray:4 4}
 .scheme-trend{fill:none;stroke:var(--faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -293,7 +303,7 @@ function schematicSVG(p,detail=false){
   const trendEnd=x(0)-step*.55;
   const trendY=before?104:(after?62:83);
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${p.cn}形态示意图">`;
-  if(!['ch11','ch13','ch14','ch15'].includes(p.ch))s+=`<path class="scheme-trend" d="M 16 ${before?34:after?119:72} L 38 ${before?53:after?100:83} L 50 ${before?46:after?107:76} L ${trendEnd} ${trendY}"/>`;
+  if(!['ch11','ch13','ch14','ch15'].includes(p.ch)&&p.id!=='bar-chart')s+=`<path class="scheme-trend" d="M 16 ${before?34:after?119:72} L 38 ${before?53:after?100:83} L 50 ${before?46:after?107:76} L ${trendEnd} ${trendY}"/>`;
   if(detail&&p.id==='dark-cloud'){
     const mid=(arr[0][0]+arr[0][3])/2;
     s+=`<line class="scheme-guide" x1="${x(0)+bw/2}" y1="${y(mid)}" x2="${x(1)+32}" y2="${y(mid)}"/><text class="scheme-text" x="${x(1)+34}" y="${y(mid)+4}">前阳线中点</text>`;
@@ -306,9 +316,19 @@ function schematicSVG(p,detail=false){
   arr.forEach((c,i)=>{
     const cx=x(i),cls=c[3]>c[0]?'kv-up':(c[3]<c[0]?'kv-down':'kv-neutral');
     s+=`<line class="kv-wick ${cls}" x1="${cx}" y1="${y(c[1])}" x2="${cx}" y2="${y(c[2])}"/>`;
-    const top=Math.min(y(c[0]),y(c[3])),height=Math.max(Math.abs(y(c[3])-y(c[0])),3);
-    s+=`<rect class="kv-body ${cls}" x="${cx-bw/2}" y="${top}" width="${bw}" height="${height}"/>`;
+    if(p.id==='bar-chart')s+=`<line class="kv-wick ${cls}" x1="${cx-bw/2}" y1="${y(c[0])}" x2="${cx}" y2="${y(c[0])}"/><line class="kv-wick ${cls}" x1="${cx}" y1="${y(c[3])}" x2="${cx+bw/2}" y2="${y(c[3])}"/>`;
+    else{const top=Math.min(y(c[0]),y(c[3])),height=Math.max(Math.abs(y(c[3])-y(c[0])),3);s+=`<rect class="kv-body ${cls}" x="${cx-bw/2}" y="${top}" width="${bw}" height="${height}"/>`;}
   });
+  if(p.ch==='gA'&&['on-neck','in-neck','thrusting'].includes(p.id)){
+    const prior=arr[0],level=p.id==='on-neck'?prior[2]:p.id==='in-neck'?prior[3]:(prior[0]+prior[3])/2;
+    s+=`<line class="scheme-guide" x1="${x(0)-bw/2}" y1="${y(level)}" x2="${x(1)+bw/2}" y2="${y(level)}"/>`;
+  }
+  if(p.ch==='gB'&&p.id==='trendline')s+=`<line class="kv-tline" x1="${x(0)}" y1="${y(34.5)}" x2="${x(arr.length-1)}" y2="${y(36)}"/>`;
+  if(p.ch==='gB'&&p.id==='support-resistance')s+=`<line class="kv-sup" x1="50" y1="${y(34.5)}" x2="330" y2="${y(34.5)}"/><line class="kv-res" x1="50" y1="${y(37)}" x2="330" y2="${y(37)}"/>`;
+  if((p.ch==='gB'&&['breakout','gaps','island','consolidation','double'].includes(p.id))||p.id==='box-range'){
+    const level=p.id==='breakout'?36.2:(p.id==='gaps'||p.id==='island'?arr[0][1]:p.id==='double'?34.1:36.5);
+    s+=`<line class="scheme-guide" x1="50" y1="${y(level)}" x2="330" y2="${y(level)}"/>`;
+  }
   if(p.ch==='ch11'){
     const line=p.id==='tl-basics'?'<line x1="65" y1="111" x2="315" y2="65"/>':
       p.id==='upthrust'?'<line x1="65" y1="58" x2="315" y2="58"/>':'<line x1="65" y1="108" x2="315" y2="108"/>';
@@ -316,7 +336,7 @@ function schematicSVG(p,detail=false){
   }
   if(p.ch==='ch13')s+='<path class="kv-ma-fast" d="M 55 109 C 90 104 108 88 140 92 S 198 65 230 79 S 285 62 325 57"/><path class="kv-ma-slow" d="M 55 120 C 105 115 140 103 180 99 S 255 89 325 78"/>';
   if(p.ch==='ch14')s+='<line class="kv-panel-grid" x1="55" y1="125" x2="325" y2="125"/><path class="kv-ind-main" d="M 55 139 C 85 136 95 147 125 139 S 168 124 195 133 S 239 149 266 138 S 300 128 325 132"/>';
-  if(p.ch==='ch15')s+='<g class="kv-volume-up"><rect x="85" y="133" width="16" height="17"/><rect x="150" y="118" width="16" height="32"/><rect x="215" y="137" width="16" height="13"/></g><line class="kv-grid" x1="65" y1="151" x2="315" y2="151"/>';
+  if(p.ch==='ch15')s+=`<g class="kv-volume-up">${arr.map((_,i)=>`<rect x="${x(i)-bw/2}" y="${i===1?118:(i===0?133:137)}" width="${bw}" height="${i===1?32:(i===0?17:13)}"/>`).join('')}</g><line class="kv-grid" x1="65" y1="151" x2="315" y2="151"/>`;
   return s+'</svg>';
 }
 
@@ -377,6 +397,33 @@ function indicatorSeries(candles,type){
   const period=Math.min(5,Math.max(2,Math.floor(closes.length/3)));
   return {name:`动力指数(${period})`,main:closes.map((v,i)=>i<period?null:v-closes[i-period]),guides:[0]};
 }
+// The source book identifies signal positions, but does not supply a downloadable
+// OHLC data set. These curves reproduce those relationships as teaching diagrams.
+function studyCurve(n,anchors){
+  return Array.from({length:n},(_,i)=>{
+    let a=anchors[0],b=anchors[anchors.length-1];
+    for(let j=0;j<anchors.length-1;j++)if(i>=anchors[j][0]&&i<=anchors[j+1][0]){a=anchors[j];b=anchors[j+1];break;}
+    return a[1]+(b[1]-a[1])*(b[0]===a[0]?0:(i-a[0])/(b[0]-a[0]));
+  });
+}
+function bookIndicator(candles,type,fig){
+  const n=candles.length,number=(fig||'').match(/14\.(\d+)/)?.[1];
+  const key=number?`14.${number}`:'';
+  if(fig==='术语表B：超买与超卖')return {name:'RSI 概念示意：70超买 / 30超卖',main:studyCurve(n,[[0,45],[4,84],[6,60],[9,16],[11,43]]),bounds:[0,100],guides:[30,70],illustrative:true};
+  const diagrams={
+    '14.1':{main:[[0,42],[8,83],[12,48],[17,71],[24,53],[32,18],[38,45]],bounds:[0,100],guides:[30,70],name:'RSI：价格新高 / 指数更低高点'},
+    '14.2':{main:[[0,62],[10,37],[17,17],[20,33],[24,28],[31,70],[35,53]],bounds:[0,100],guides:[30,70],name:'RSI：价格新低 / 指数更高低点'},
+    '14.3':{main:[[0,0.03],[17,-0.045],[21,-0.015],[24,-0.026],[32,0.015],[39,0.028]],guides:[0],name:'均线摆动指数：锤子处更高低点'},
+    '14.4':{main:[[0,0.7],[12,-1.2],[20,1.2],[28,2.1],[33,1.15],[41,-1.2]],guides:[0],name:'均线摆动指数：价格新高 / 指数更低高点'},
+    '14.6':{main:[[0,47],[4,91],[5,76],[10,30],[16,11],[18,12],[19,27],[26,65]],signal:[[0,42],[4,81],[5,83],[10,39],[16,19],[18,19],[19,17],[26,54]],bounds:[0,100],guides:[20,80],name:'随机指数：超买下穿 / 超卖上穿'},
+    '14.7':{main:[[0,45],[7,13],[8,15],[9,26],[17,72],[25,91],[28,88],[29,72],[33,30]],signal:[[0,49],[7,20],[8,19],[9,18],[17,62],[25,82],[28,81],[29,83],[33,45]],bounds:[0,100],guides:[20,80],name:'随机指数：低位上穿 / 高位下穿'},
+    '14.8':{main:[[0,-0.2],[11,0.55],[16,0.2],[22,0.6],[26,0.19],[30,-0.15],[35,-0.25]],signal:[[0,-0.15],[11,0.35],[16,0.25],[22,0.38],[26,0.31],[30,0.05],[35,-0.12]],guides:[0],name:'MACD：乌云盖顶先于看跌交叉'},
+    '14.9':{main:[[0,0.1],[16,0.9],[20,1.1],[22,1.03],[23,0.85],[28,-0.4],[32,-0.6]],signal:[[0,0.05],[16,0.65],[20,0.85],[22,0.94],[23,0.96],[28,-0.1],[32,-0.42]],guides:[0],name:'MACD：看跌吞没附近的下穿'}
+  };
+  const d=diagrams[key];
+  if(!d)return indicatorSeries(candles,type);
+  return {...d,main:studyCurve(n,d.main),signal:d.signal?studyCurve(n,d.signal):undefined,illustrative:true};
+}
 function volumeSeries(candles,marks){
   const values=candles.map((c,i)=>.72+Math.abs(c[3]-c[0])/Math.max(.01,c[1]-c[2])*.38+(i%5)*.09);
   (marks||[]).forEach(m=>{
@@ -423,7 +470,7 @@ function caseChartSVG(series,opts){
   const y=v=>padT+plotH*(hi-v)/(hi-lo);
   const x=i=>padL+(i+0.5)*step;
   const ticks=niceTicks(lo,hi,4);
-  let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="案例价格走势图">`;
+  let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="案例价格走势图" data-lo="${lo}" data-hi="${hi}" data-plot-height="${plotH}" data-pad-top="${padT}" data-pad-left="${padL}" data-plot-width="${plotW}" data-count="${n}" data-dates="${encodeURIComponent(JSON.stringify(dates))}">`;
   ticks.forEach(t=>{
     const ty=y(t);
     s+=`<line class="kv-grid" x1="${padL}" y1="${ty}" x2="${W-padR}" y2="${ty}"/>`;
@@ -441,8 +488,8 @@ function caseChartSVG(series,opts){
   series.forEach((c,i)=>{
     const cx=x(i),up=c[3]>=c[0],cls=up?'kv-up':'kv-down';
     s+=`<line class="kv-wick ${cls}" x1="${cx}" y1="${y(c[1])}" x2="${cx}" y2="${y(c[2])}"/>`;
-    const oy=y(c[0]),cy=y(c[3]),bt=Math.min(oy,cy),bh=Math.max(Math.abs(cy-oy),1.4);
-    s+=`<rect class="kv-body ${cls}" x="${cx-bw/2}" y="${bt}" width="${bw}" height="${bh}"/>`;
+    if(opts.barStyle)s+=`<line class="kv-wick ${cls}" x1="${cx-bw/2}" y1="${y(c[0])}" x2="${cx}" y2="${y(c[0])}"/><line class="kv-wick ${cls}" x1="${cx}" y1="${y(c[3])}" x2="${cx+bw/2}" y2="${y(c[3])}"/>`;
+    else{const oy=y(c[0]),cy=y(c[3]),bt=Math.min(oy,cy),bh=Math.max(Math.abs(cy-oy),1.4);s+=`<rect class="kv-body ${cls}" x="${cx-bw/2}" y="${bt}" width="${bw}" height="${bh}"/>`;}
   });
   if(opts.ma){
     s+=`<path class="kv-ma-fast" d="${svgPath(opts.ma.fast,x,y)}"/><path class="kv-ma-slow" d="${svgPath(opts.ma.slow,x,y)}"/>`;
@@ -487,7 +534,14 @@ function caseChartSVG(series,opts){
     s+=`<line class="kv-grid" x1="${padL}" y1="${panelY}" x2="${W-padR}" y2="${panelY}"/>`;
     (ind.guides||[]).forEach(v=>s+=`<line class="kv-panel-grid" x1="${padL}" y1="${iy(v)}" x2="${W-padR}" y2="${iy(v)}"/>`);
     s+=`<path class="kv-ind-main" d="${svgPath(ind.main,x,iy)}"/>`;
-    if(ind.signal)s+=`<path class="kv-ind-signal" d="${svgPath(ind.signal,x,iy)}"/>`;
+    if(ind.signal){
+      if((ind.name||'').includes('MACD'))ind.main.forEach((v,i)=>{const delta=v-ind.signal[i],zero=iy(0),yy=iy(delta);s+=`<rect class="${delta>=0?'kv-ind-hist-up':'kv-ind-hist-down'}" x="${x(i)-bw/3}" y="${Math.min(yy,zero)}" width="${bw*2/3}" height="${Math.max(1,Math.abs(yy-zero))}"/>`;});
+      s+=`<path class="kv-ind-signal" d="${svgPath(ind.signal,x,iy)}"/>`;
+    }
+    (ind.points||[]).forEach(point=>{
+      const v=ind.main[point.x];if(!Number.isFinite(v))return;
+      s+=`<circle class="kv-markdot" cx="${x(point.x)}" cy="${iy(v)}" r="3.5"/><text class="kv-marklab" x="${x(point.x)+6}" y="${iy(v)-6}">${point.label}</text>`;
+    });
     s+=`<text class="kv-panel-label" x="${padL+5}" y="${pTop+10}">${ind.name}</text>`;
   }
   if(opts.volume){
@@ -505,17 +559,23 @@ function caseChartSVG(series,opts){
 function caseFigHTML(o){
   o=o||{};
   const bookFigure=Boolean(o.fig);
-  const showGaps=/gap|window|tasuki/.test(o.id||'');
+  const showGaps=/gap|window|tasuki/.test(o.id||'')||['rain-drop','breakout','gaps','island'].includes(o.id);
+  const barStyle=o.id==='bar-chart';
   const numberedMarks=(o.marks||[]).map((m,i)=>({...m,label:String(i+1)}));
   const all=o.candle||[];
-  const chartTrend=o.ch==='ch13'?(o.trend||[]).filter(t=>!/移动平均线|均线/.test(t.label||'')):(o.trend||[]);
+  const chartTrend=o.ch==='ch13'?(o.trend||[]).filter(t=>!/移动平均线|均线/.test(t.label||'')):[...(o.trend||[])];
+  if(o.ch==='gA'&&['on-neck','in-neck','thrusting'].includes(o.id)&&all.length>=3){
+    const prior=all[1],level=o.id==='on-neck'?prior[2]:o.id==='in-neck'?prior[3]:(prior[0]+prior[3])/2;
+    chartTrend.push({t:'res',from:[1,level],to:[2,level],label:o.id==='on-neck'?'前黑线最低点':o.id==='in-neck'?'前黑线收市价':'前黑实体中点'});
+  }
   const closes=all.map(c=>c[3]);
   const ma=o.ch==='ch13'?{fast:sma(closes,5),slow:sma(closes,10)}:null;
-  const indicator=o.ch==='ch14'||o.ch==='ch17'?indicatorSeries(all,o.ch==='ch17'?'ma-osc':(o.id==='osc-basics'?'rsi':o.id)):null;
+  const indicator=o.ch==='ch14'||o.ch==='ch17'||o.id==='overbought-oversold'?bookIndicator(all,o.ch==='ch17'?'ma-osc':(o.id==='osc-basics'||o.id==='overbought-oversold'?'rsi':o.id),o.id==='overbought-oversold'?'术语表B：超买与超卖':o.fig):null;
+  if(indicator)indicator.points=numberedMarks.map(m=>({x:m.x,label:m.label}));
   if(o.ch==='ch17')indicator.name='示意摆动指数(5−10)';
   const volume=o.ch==='ch15'?volumeSeries(all,o.marks):null;
   const hasPanel=Boolean(indicator||volume);
-  const svg=caseChartSVG(all,{trend:chartTrend,marks:numberedMarks,dates:o.dates,height:hasPanel?350:300,showGaps,ma,indicator,volume});
+  const svg=caseChartSVG(all,{trend:chartTrend,marks:numberedMarks,dates:o.dates,height:hasPanel?350:300,showGaps,ma,indicator,volume,barStyle});
   const relevant=(o.marks||[]).find(m=>m.label&&o.cn&&m.label.includes(o.cn.slice(0,2)));
   const focusAt=typeof o.focus==='number'?o.focus:(relevant||((o.marks||[])[0])||{}).x;
   const center=Number.isFinite(focusAt)?Math.round(focusAt):Math.max(0,all.length-5);
@@ -525,16 +585,16 @@ function caseFigHTML(o){
   const focusedMarks=numberedMarks.filter(m=>m.x>=from&&m.x<to).map(m=>({...m,x:m.x-from}));
   const focusedDates=(o.dates||[]).slice(from,to);
   const focusedTrend=chartTrend.filter(t=>t.from&&t.to&&Math.max(t.from[0],t.to[0])>=from&&Math.min(t.from[0],t.to[0])<to).map(t=>({...t,from:[t.from[0]-from,t.from[1]],to:[t.to[0]-from,t.to[1]]}));
-  const focusedIndicator=indicator?{...indicator,main:indicator.main.slice(from,to),signal:indicator.signal&&indicator.signal.slice(from,to)}:null;
+  const focusedIndicator=indicator?{...indicator,main:indicator.main.slice(from,to),signal:indicator.signal&&indicator.signal.slice(from,to),points:indicator.points.filter(p=>p.x>=from&&p.x<to).map(p=>({...p,x:p.x-from}))}:null;
   const focusedMa=ma?{fast:ma.fast.slice(from,to),slow:ma.slow.slice(from,to)}:null;
-  const detailSvg=all.length>9?caseChartSVG(all.slice(from,to),{trend:focusedTrend,marks:focusedMarks,dates:focusedDates,height:hasPanel?320:260,width:620,showGaps,ma:focusedMa,indicator:focusedIndicator,volume:volume&&volume.slice(from,to)}):'';
+  const detailSvg=all.length>9?caseChartSVG(all.slice(from,to),{trend:focusedTrend,marks:focusedMarks,dates:focusedDates,height:hasPanel?320:260,width:620,showGaps,ma:focusedMa,indicator:focusedIndicator,volume:volume&&volume.slice(from,to),barStyle}):'';
   const marks=(o.marks||[]).filter(m=>m&&m.label).map((m,i)=>`<span><b>${i+1}</b> ${m.label}</span>`).join('');
-  const frame=chart=>`<div class="chart-frame"><div class="case-chart${hasPanel?' with-subchart':''}">${chart}</div><div class="chart-controls" aria-label="图表缩放"><button type="button" data-chart-zoom="in" aria-label="放大图表">＋</button><button type="button" data-chart-zoom="out" aria-label="缩小图表">－</button></div></div>`;
+  const frame=chart=>`<div class="chart-frame"><div class="case-chart${hasPanel?' with-subchart':''}">${chart}</div><div class="chart-crosshair" aria-hidden="true"><i class="cross-v"></i><i class="cross-h"></i><span class="cross-price"></span><span class="cross-date"></span></div><div class="chart-controls" aria-label="图表缩放"><button type="button" data-chart-zoom="in" aria-label="放大图表">＋</button><button type="button" data-chart-zoom="out" aria-label="缩小图表">－</button></div></div>`;
   return `<div class="case-fig">`+
     (o.fig?`<div class="fig-cap">${o.fig}</div>`:'')+
     (detailSvg?`<div class="chart-label">关键位置放大</div>${frame(detailSvg)}`:'')+
     `<div class="chart-label">${bookFigure?'书中图例走势重绘':'概念示意重绘'}</div>`+
-    `<div class="chart-hint">${bookFigure?'依据书中图例文字和关键位置示意':'依据书中概念绘制'}；可横向滑动、用右下角按钮缩放，非原书图像或精确行情数据。${showGaps?'蓝色区间表示价格跳空。':''}${ma?'均线由示意收市价计算。':''}${indicator?'下方指数由示意数据计算。':''}${volume?'下方为示意相对成交量，非原书成交量数据。':''}</div>`+
+    `<div class="chart-hint">${bookFigure?'依据书中图例文字和关键位置示意':'依据书中概念绘制'}；可横向滑动、用右下角按钮缩放，非原书图像或精确行情数据。${showGaps?'蓝色区间表示价格跳空。':''}${ma?'均线由示意收市价计算。':''}${indicator?(indicator.illustrative?'下方指数按书中信号位置重绘，仅表达背离与交叉关系，非实际指数读数。':'下方指数由示意数据计算。'):''}${volume?'下方为示意相对成交量，非原书成交量数据。':''}</div>`+
     frame(svg)+
     (marks?`<div class="mark-list">${marks}</div>`:'')+
     `<div class="ct"><span>标的：<b>${o.t||''}</b></span><span>周期：<b>${o.f||''}</b></span><span>时间：<b>${o.d||''}</b></span></div>`+
@@ -603,14 +663,31 @@ function closeModal(){document.getElementById('modal').classList.remove('open');
 function zoomChart(button){
   const frame=button.closest('.chart-frame'),chart=frame.querySelector('.case-chart'),svg=chart.querySelector('svg');
   const oldScale=Number(frame.dataset.scale)||1;
-  const next=Math.min(2,Math.max(.6,Math.round((oldScale+(button.dataset.chartZoom==='in'?.2:-.2))*10)/10));
+  const next=Math.min(2.5,Math.max(.25,Math.round((oldScale+(button.dataset.chartZoom==='in'?.15:-.15))*100)/100));
   if(next===oldScale)return;
   const center=(chart.scrollLeft+chart.clientWidth/2)/svg.getBoundingClientRect().width;
   frame.dataset.scale=String(next);
   svg.style.width=Math.round(Number(frame.dataset.baseWidth)*next)+'px';
   chart.scrollLeft=center*svg.getBoundingClientRect().width-chart.clientWidth/2;
-  frame.querySelector('[data-chart-zoom="in"]').disabled=next>=2;
-  frame.querySelector('[data-chart-zoom="out"]').disabled=next<=.6;
+  frame.querySelector('[data-chart-zoom="in"]').disabled=next>=2.5;
+  frame.querySelector('[data-chart-zoom="out"]').disabled=next<=.25;
+}
+function moveChartCrosshair(chart,clientX,clientY){
+  const frame=chart.closest('.chart-frame'),overlay=frame.querySelector('.chart-crosshair');
+  const rect=frame.getBoundingClientRect(),svg=chart.querySelector('svg'),svgRect=svg.getBoundingClientRect();
+  if(clientX<rect.left||clientX>rect.right||clientY<rect.top||clientY>rect.bottom){overlay.classList.remove('active');return;}
+  overlay.style.setProperty('--cross-x',`${clientX-rect.left}px`);
+  overlay.style.setProperty('--cross-y',`${clientY-rect.top}px`);
+  overlay.classList.add('active');
+  const vb=svg.viewBox.baseVal;
+  const sx=(clientX-svgRect.left)/svgRect.width*vb.width;
+  const sy=(clientY-svgRect.top)/svgRect.height*vb.height;
+  const plotStart=Number(svg.dataset.padLeft),plotWidth=Number(svg.dataset.plotWidth);
+  const count=Number(svg.dataset.count),index=Math.max(0,Math.min(count-1,Math.round((sx-plotStart)/plotWidth*count-.5)));
+  const dates=JSON.parse(decodeURIComponent(svg.dataset.dates));
+  overlay.querySelector('.cross-date').textContent=dates[index]||`第${index+1}根`;
+  const price=overlay.querySelector('.cross-price'),top=Number(svg.dataset.padTop),height=Number(svg.dataset.plotHeight);
+  price.textContent=sy>=top&&sy<=top+height?fmtPrice(Number(svg.dataset.hi)-(sy-top)/height*(Number(svg.dataset.hi)-Number(svg.dataset.lo))):'';
 }
 
 /* ---- 事件 ---- */
@@ -663,6 +740,19 @@ document.getElementById('mCase').addEventListener('click',e=>{
   const button=e.target.closest('[data-chart-zoom]');
   if(button)zoomChart(button);
 });
+document.getElementById('mCase').addEventListener('pointermove',e=>{
+  const chart=e.target.closest('.case-chart');if(chart)moveChartCrosshair(chart,e.clientX,e.clientY);
+});
+document.getElementById('mCase').addEventListener('pointerdown',e=>{
+  const chart=e.target.closest('.case-chart');if(chart)moveChartCrosshair(chart,e.clientX,e.clientY);
+});
+document.getElementById('mCase').addEventListener('pointerout',e=>{
+  if(e.pointerType==='mouse'&&e.target.closest('.case-chart')&&!e.relatedTarget?.closest?.('.case-chart'))e.target.closest('.chart-frame').querySelector('.chart-crosshair').classList.remove('active');
+});
+document.getElementById('mCase').addEventListener('touchmove',e=>{
+  const touch=e.touches[0],chart=e.target.closest('.case-chart');
+  if(touch&&chart)moveChartCrosshair(chart,touch.clientX,touch.clientY);
+},{passive:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 document.getElementById('themeToggle').addEventListener('click',()=>{
   applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
