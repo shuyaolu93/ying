@@ -102,7 +102,7 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .m-top h2{font-family:var(--serif);font-size:26px;font-weight:900}
 .m-top .en{font-size:12px;color:var(--faint);font-family:var(--mono)}
 .m-tags{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 6px}
-.m-candle{width:100%;height:140px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px;margin:14px 0}
+.m-candle{width:100%;height:200px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px;margin:14px 0}
 .m-candle svg{width:100%;height:100%}
 .m-sec{font-size:11px;color:var(--faint);letter-spacing:.14em;margin:22px 0 8px;display:flex;align-items:center;gap:10px}
 .m-sec::before{content:"";width:20px;height:1px;background:var(--line2)}
@@ -111,9 +111,37 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .case{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
 .case .ct{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--faint);margin-bottom:8px}
 .case .ct b{color:var(--text);font-weight:600;font-family:var(--mono)}
-.case .case-chart{width:100%;height:132px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;margin:12px 0}
+.case .case-chart{width:100%;height:300px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;margin:12px 0}
 .case .case-chart svg{width:100%;height:100%}
 .case p{color:var(--dim);font-size:14px;margin:0}
+
+/* ---------- 案例双图布局 ---------- */
+.case-figs{display:grid;grid-template-columns:1fr;gap:20px}
+@media(min-width:900px){.case-figs.two{grid-template-columns:1fr 1fr;gap:24px}}
+.fig-cap{font-size:12px;color:var(--faint);margin:2px 0 0;line-height:1.55}
+
+/* ---------- SVG 图表主题色（内联 SVG 随 data-theme 切换） ---------- */
+.kv-wick{stroke-width:1.6;stroke-linecap:round}
+.kv-body{stroke-width:0}
+.kv-up{fill:var(--up);stroke:var(--up)}
+.kv-down{fill:var(--down);stroke:var(--down)}
+.kv-grid{stroke:var(--line);stroke-width:1}
+.kv-tick{fill:var(--faint);font-size:10px;font-family:var(--mono)}
+.kv-date{fill:var(--faint);font-size:10.5px}
+.kv-sup{stroke:#3B82F6;stroke-width:1.6}
+.kv-res{stroke:#F59E0B;stroke-width:1.6}
+.kv-tline{stroke:#9CA3AF;stroke-width:1.4;stroke-dasharray:5 4}
+html[data-theme="dark"] .kv-sup{stroke:#60A5FA}
+html[data-theme="dark"] .kv-res{stroke:#FBBF24}
+html[data-theme="dark"] .kv-tline{stroke:#8E8E99}
+.kv-tlab{font-size:10.5px;stroke:none}
+.kv-tlab.kv-sup{fill:#3B82F6}
+.kv-tlab.kv-res{fill:#F59E0B}
+.kv-tlab.kv-tline{fill:var(--dim)}
+html[data-theme="dark"] .kv-tlab.kv-sup{fill:#60A5FA}
+html[data-theme="dark"] .kv-tlab.kv-res{fill:#FBBF24}
+.kv-markdot{fill:var(--dim)}
+.kv-marklab{fill:var(--dim);font-size:10.5px}
 
 footer{border-top:1px solid var(--line);margin-top:52px;padding:32px 20px 56px;text-align:center;color:var(--faint);font-size:12px}
 footer b{color:var(--dim);font-weight:500}
@@ -232,20 +260,111 @@ let PATTERNS=[];
 <script>
 /* ---- 蜡烛渲染 ---- */
 function candleSVG(arr){
+  arr=arr||[];
   const W=150,H=100,P=9;
   let lo=Infinity,hi=-Infinity;
   arr.forEach(c=>{lo=Math.min(lo,c[2]);hi=Math.max(hi,c[1]);});
-  const span=(hi-lo)||1,n=arr.length,step=(W-2*P)/n,bw=Math.max(7,step*0.58);
+  if(!isFinite(lo)){lo=0;hi=1;}
+  const span=(hi-lo)||1,n=arr.length||1,step=(W-2*P)/n,bw=Math.max(1.1,step*0.55);
   const y=v=>P+(H-2*P)*(hi-v)/span;
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-hidden="true">`;
   arr.forEach((c,i)=>{
-    const x=P+i*step+step/2,up=c[3]>=c[0],col=up?UP:DOWN;
-    const oy=y(c[0]),cy=y(c[3]),bt=Math.min(oy,cy),bb=Math.max(oy,cy),bh=Math.max(bb-bt,1.6);
-    s+=`<line x1="${x}" y1="${y(c[1])}" x2="${x}" y2="${y(c[2])}" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`;
-    s+=`<rect x="${x-bw/2}" y="${bt}" width="${bw}" height="${bh}" fill="${col}"/>`;
-    if(bh<=2.2){s+=`<line x1="${x-bw/2}" y1="${bt}" x2="${x+bw/2}" y2="${bt}" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`;}
+    const cx=P+i*step+step/2,up=c[3]>=c[0],cls=up?'kv-up':'kv-down';
+    s+=`<line class="kv-wick ${cls}" x1="${cx}" y1="${y(c[1])}" x2="${cx}" y2="${y(c[2])}"/>`;
+    const oy=y(c[0]),cy=y(c[3]),bt=Math.min(oy,cy),bh=Math.max(Math.abs(cy-oy),1.4);
+    s+=`<rect class="kv-body ${cls}" x="${cx-bw/2}" y="${bt}" width="${bw}" height="${bh}"/>`;
   });
   return s+'</svg>';
+}
+
+/* ---- 带坐标系的完整案例图 ---- */
+let _svgUid=0;
+function niceTicks(lo,hi,count){
+  const span=(hi-lo)||1;
+  const raw=span/count,mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  let step=raw/mag;
+  if(step>=5)step=5;else if(step>=2)step=2;else step=1;
+  step*=mag;
+  const ticks=[];
+  for(let t=Math.ceil(lo/step)*step;t<=hi+step*1e-6;t+=step)ticks.push(t);
+  return ticks;
+}
+function fmtPrice(v){
+  const r=Math.round(v*100)/100;
+  return (Math.round(r*100)/100).toString();
+}
+function caseChartSVG(series,opts){
+  opts=opts||{};
+  series=series||[];
+  const trend=opts.trend||[], marks=opts.marks||[], dates=opts.dates||[];
+  const H=opts.height||300;
+  const W=760,padL=46,padR=12,padT=10,padB=22;
+  const plotW=W-padL-padR,plotH=H-padT-padB;
+  const n=series.length||1;
+  let lo=Infinity,hi=-Infinity;
+  series.forEach(c=>{lo=Math.min(lo,c[2]);hi=Math.max(hi,c[1]);});
+  trend.forEach(t=>{[t.from,t.to].forEach(pt=>{if(pt&&pt.length>1){lo=Math.min(lo,pt[1]);hi=Math.max(hi,pt[1]);}});});
+  marks.forEach(m=>{if(m&&typeof m.y==='number'){lo=Math.min(lo,m.y);hi=Math.max(hi,m.y);}});
+  if(!isFinite(lo)){lo=0;hi=1;}
+  const pad=(hi-lo)*0.07||1;lo-=pad;hi+=pad;
+  const step=plotW/n,bw=Math.max(1.2,Math.min(9,step*0.55));
+  const y=v=>padT+plotH*(hi-v)/(hi-lo);
+  const x=i=>padL+(i+0.5)*step;
+  const ticks=niceTicks(lo,hi,4);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-hidden="true">`;
+  ticks.forEach(t=>{
+    const ty=y(t);
+    s+=`<line class="kv-grid" x1="${padL}" y1="${ty}" x2="${W-padR}" y2="${ty}"/>`;
+    s+=`<text class="kv-tick" x="${padL-6}" y="${ty+3}" text-anchor="end">${fmtPrice(t)}</text>`;
+  });
+  series.forEach((c,i)=>{
+    const cx=x(i),up=c[3]>=c[0],cls=up?'kv-up':'kv-down';
+    s+=`<line class="kv-wick ${cls}" x1="${cx}" y1="${y(c[1])}" x2="${cx}" y2="${y(c[2])}"/>`;
+    const oy=y(c[0]),cy=y(c[3]),bt=Math.min(oy,cy),bh=Math.max(Math.abs(cy-oy),1.4);
+    s+=`<rect class="kv-body ${cls}" x="${cx-bw/2}" y="${bt}" width="${bw}" height="${bh}"/>`;
+  });
+  trend.forEach(t=>{
+    const cls=t.t==='sup'?'kv-sup':(t.t==='res'?'kv-res':'kv-tline');
+    if(!t.from||!t.to)return;
+    // clip segment to plot rect [padL, W-padR] x [padT, H-padB]
+    let x1=x(t.from[0]),y1=y(t.from[1]),x2=x(t.to[0]),y2=y(t.to[1]);
+    const minX=padL,maxX=W-padR,minY=padT,maxY=H-padB;
+    const dx=x2-x1,dy=y2-y1;
+    let t0=0,t1=1;
+    const clips=[[-dx,x1-minX],[dx,maxX-x1],[-dy,y1-minY],[dy,maxY-y1]];
+    let ok=true;
+    for(const[p,q]of clips){
+      if(p===0){if(q<0){ok=false;break;}}
+      else{const r=q/p;if(p<0){if(r>t1)ok=false;if(r>t0)t0=r;}else{if(r<t0)ok=false;if(r<t1)t1=r;}}
+    }
+    if(ok&&t1>t0){x1=x1+t0*dx;y1=y1+t0*dy;x2=x1+t1*dx;y2=y1+t1*dy;}
+    s+=`<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+    if(t.label){
+      const mx=Math.min(Math.max((x1+x2)/2,minX+24),maxX-24),my=Math.min(Math.max((y1+y2)/2,minY+10),maxY-6);
+      s+=`<text class="kv-tlab ${cls}" x="${mx}" y="${my-5}" text-anchor="middle">${t.label}</text>`;
+    }
+  });
+  marks.forEach(m=>{
+    if(!m||typeof m.x!=='number')return;
+    const mx=x(m.x),my=y(m.y);
+    s+=`<circle class="kv-markdot" cx="${mx}" cy="${my}" r="3"/>`;
+    if(m.label)s+=`<text class="kv-marklab" x="${mx+6}" y="${my-4}">${m.label}</text>`;
+  });
+  s+=`</g>`;
+  const k=Math.max(1,Math.ceil(n/6));
+  for(let i=0;i<n;i+=k){
+    if(dates[i])s+=`<text class="kv-date" x="${x(i)}" y="${H-7}" text-anchor="middle">${dates[i]}</text>`;
+  }
+  return s+'</svg>';
+}
+function caseFigHTML(o){
+  o=o||{};
+  const svg=caseChartSVG(o.candle,{trend:o.trend,marks:o.marks,dates:o.dates,height:300});
+  return `<div class="case-fig">`+
+    (o.fig?`<div class="fig-cap">${o.fig}</div>`:'')+
+    `<div class="case-chart">${svg}</div>`+
+    `<div class="ct"><span>标的：<b>${o.t||''}</b></span><span>周期：<b>${o.f||''}</b></span><span>时间：<b>${o.d||''}</b></span></div>`+
+    `<p>${o.c||''}</p></div>`;
 }
 
 /* ---- 渲染 ---- */
@@ -289,12 +408,13 @@ function openModal(id){
   document.getElementById('mTitle').textContent=p.cn;
   document.getElementById('mEn').textContent=p.en;
   document.getElementById('mTags').innerHTML=tagHTML(p);
-  document.getElementById('mCandle').innerHTML=candleSVG(p.candle);
+  document.getElementById('mCandle').innerHTML=caseChartSVG(p.candle,{height:200});
   document.getElementById('mBody').innerHTML=`<p>${p.def}</p>`;
   document.getElementById('mNote').textContent=p.note;
-  document.getElementById('mCase').innerHTML=
-    `<div class="ct"><span>标的：<b>${p.case.t}</b></span><span>周期：<b>${p.case.f}</b></span><span>时间：<b>${p.case.d}</b></span></div>`+
-    `<div class="case-chart">${candleSVG(p.candle)}</div><p>${p.case.c}</p>`;
+  const cs1=p.case||{};
+  const figs=[caseFigHTML({candle:p.candle,trend:p.trend,marks:p.marks,dates:p.dates,fig:p.fig,t:cs1.t,f:cs1.f,d:cs1.d,c:cs1.c})];
+  if(p.case2)figs.push(caseFigHTML({candle:p.case2.candle,trend:p.case2.trend,marks:p.case2.marks,dates:p.case2.dates,fig:p.case2.fig,t:p.case2.t,f:p.case2.f,d:p.case2.d,c:p.case2.c}));
+  document.getElementById('mCase').innerHTML=`<div class="case-figs${p.case2?' two':''}">${figs.join('')}</div>`;
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow='hidden';
 }
