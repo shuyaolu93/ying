@@ -22,9 +22,35 @@
     button.textContent = user ? '个人中心' : '登录 / 注册';
     button.classList.toggle('active', Boolean(user));
   }
-  function renderProfile() { var box=document.getElementById('profileCenter'); if(!box)return; var ok=active(); box.hidden=!ok; var name=document.getElementById('profileAccount'); if(name)name.textContent=ok?'账号：'+user.email:''; var until=user&&user.entitlementUntil?new Date(user.entitlementUntil):null; var exp=document.getElementById('profileExpiry'); if(exp)exp.textContent='卡密到期日：'+(until&&!isNaN(until)?until.toLocaleString('zh-CN'):'未兑换'); var list=document.getElementById('myMessages'); if(list&&ok){request('/api/messages').then(function(data){list.innerHTML=(data.messages||[]).map(function(x){return '<p><b>'+String(x.email||'')+'</b>：'+String(x.message||'').replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})+'</p>'}).join('')||'<small>暂无留言</small>'}).catch(function(){list.innerHTML=''})} var cd=document.getElementById('profileCountdown'); if(cd){if(!until||isNaN(until)){cd.textContent='剩余时间：未兑换'}else{var ms=Math.max(0,until.getTime()-Date.now());var d=Math.floor(ms/86400000),h=Math.floor(ms%86400000/3600000),m=Math.floor(ms%3600000/60000);cd.textContent='剩余时间：'+d+' 天 '+h+' 小时 '+m+' 分钟';}}}
-  function close() { var modal = document.getElementById('authModal'); if (modal) modal.hidden = true; }
-  function open() { var modal = document.getElementById('authModal'); if (modal) { modal.hidden = false; render(); renderProfile(); } }
+  function renderProfile() {
+    var box = document.getElementById('profileCenter'); if (!box) return;
+    var ok = active(); box.hidden = !ok;
+    var title = document.getElementById('authTitle'); if (title) title.textContent = ok ? '个人中心' : '账户与卡密';
+    var loginFields = document.getElementById('authLoginFields'); if (loginFields) loginFields.hidden = ok;
+    var redeemFields = document.getElementById('authRedeemFields'); if (redeemFields) redeemFields.hidden = ok;
+    var name = document.getElementById('profileAccount'); if (name) name.textContent = ok ? '账号：' + user.email : '';
+    var until = user && user.entitlementUntil ? new Date(user.entitlementUntil) : null;
+    var exp = document.getElementById('profileExpiry'); if (exp) exp.textContent = '卡密到期日：' + (until && !isNaN(until) ? until.toLocaleString('zh-CN') : '未兑换');
+    var list = document.getElementById('myMessages');
+    if (list && ok) {
+      request('/api/messages').then(function (data) {
+        list.innerHTML = (data.messages || []).map(function (x) {
+          return '<p><b>' + String(x.email || '') + '</b>：' + String(x.message || '').replace(/[&<>]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }) + '</p>';
+        }).join('') || '<small>暂无留言</small>';
+      }).catch(function () { list.innerHTML = ''; });
+    }
+    var cd = document.getElementById('profileCountdown');
+    if (cd) {
+      if (!until || isNaN(until)) cd.textContent = '剩余时间：未兑换';
+      else {
+        var ms = Math.max(0, until.getTime() - Date.now());
+        var d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000), m = Math.floor(ms % 3600000 / 60000);
+        cd.textContent = '剩余时间：' + d + ' 天 ' + h + ' 小时 ' + m + ' 分钟';
+      }
+    }
+  }
+  function close() { var modal = document.getElementById('authModal'); if (modal) modal.hidden = true; document.body.classList.remove('auth-modal-open'); }
+  function open() { var modal = document.getElementById('authModal'); if (modal) { modal.hidden = false; document.body.classList.add('auth-modal-open'); var panel = modal.querySelector('.auth-panel'); if (panel) panel.scrollTop = 0; render(); renderProfile(); } }
   function syncAccount() {
     var epoch = ++authEpoch;
     showCover(); render();
@@ -39,7 +65,7 @@
     var sameAccount = active() && data.user && data.user.active && new Date(data.user.entitlementUntil).getTime() > Date.now() && user.id === data.user.id;
     token = data.token || token; user = data.user || user;
     try { if (token) localStorage.setItem(tokenKey, token); } catch (error) { show('浏览器存储不可用，本次登录仅在当前会话有效'); }
-    if (sameAccount) { render(); return Promise.resolve(); }
+    if (sameAccount) { render(); renderProfile(); return Promise.resolve(); }
     return syncAccount();
   }
   function clear(error) {
@@ -63,7 +89,7 @@
     var pill = document.querySelector('.live-pill'); if (!pill) return;
     pill.outerHTML = '<div class="account-controls"><button type="button" class="account-button" id="accountButton">登录 / 注册</button><button type="button" class="account-button" id="headerLogout">退出登录</button></div>';
     var overlay = document.createElement('div'); overlay.id = 'authModal'; overlay.className = 'auth-overlay'; overlay.hidden = true;
-    overlay.innerHTML = '<section class="auth-panel" role="dialog" aria-modal="true" aria-labelledby="authTitle"><button type="button" class="auth-close" id="authClose">×</button><h2 id="authTitle">账户与卡密</h2><p class="auth-subtitle">登录并兑换有效卡密后进入研究室。研究草稿与快照保存在当前浏览器，按账户区分。</p><label>账号<input id="authEmail" type="text" autocomplete="username" inputmode="numeric" placeholder="邮箱或 8 位以上数字"></label><label>密码<input id="authPassword" type="password" autocomplete="current-password" placeholder="至少 8 位"></label><div class="auth-actions"><button type="button" class="primary" id="authLogin">登录</button><button type="button" class="secondary" id="authRegister">注册</button></div><div class="auth-divider"></div><label>卡密<input id="authCode" type="text" autocomplete="off" placeholder="兑换卡密，例如 RONGHE-XXXX"></label><button type="button" class="primary auth-redeem" id="authRedeem">兑换卡密</button><section class="profile-center" id="profileCenter" hidden><h3>个人中心</h3><p id="profileAccount"></p><p id="profileExpiry">卡密到期日：未兑换</p><p id="profileCountdown">剩余时间：未兑换</p><label>新密码<input id="newPassword" type="password" placeholder="至少 8 位"></label><button type="button" class="secondary" id="changePassword">修改密码</button><label>留言板<textarea id="messageInput" rows="3" placeholder="留下留言"></textarea></label><button type="button" class="secondary" id="sendMessage">提交留言</button><div id="myMessages"></div></section><button type="button" class="auth-logout" id="authLogout">退出登录</button><div id="authNote" class="auth-note"></div></section>';
+    overlay.innerHTML = '<section class="auth-panel" role="dialog" aria-modal="true" aria-labelledby="authTitle"><button type="button" class="auth-close" id="authClose">×</button><h2 id="authTitle">账户与卡密</h2><p class="auth-subtitle">登录并兑换有效卡密后进入研究室。研究草稿与快照保存在当前浏览器，按账户区分。</p><div id="authLoginFields"><label>账号<input id="authEmail" type="text" autocomplete="username" inputmode="numeric" placeholder="邮箱或 8 位以上数字"></label><label>密码<input id="authPassword" type="password" autocomplete="current-password" placeholder="至少 8 位"></label><div class="auth-actions"><button type="button" class="primary" id="authLogin">登录</button><button type="button" class="secondary" id="authRegister">注册</button></div></div><div id="authRedeemFields"><div class="auth-divider"></div><label>卡密<input id="authCode" type="text" autocomplete="off" placeholder="兑换卡密，例如 RONGHE-XXXX"></label><button type="button" class="primary auth-redeem" id="authRedeem">兑换卡密</button></div><section class="profile-center" id="profileCenter" hidden><h3>个人中心</h3><p id="profileAccount"></p><p id="profileExpiry">卡密到期日：未兑换</p><p id="profileCountdown">剩余时间：未兑换</p><label>新密码<input id="newPassword" type="password" placeholder="至少 8 位"></label><button type="button" class="secondary" id="changePassword">修改密码</button><label>留言板<textarea id="messageInput" rows="3" placeholder="留下留言"></textarea></label><button type="button" class="secondary" id="sendMessage">提交留言</button><div id="myMessages"></div></section><button type="button" class="auth-logout" id="authLogout">退出登录</button><div id="authNote" class="auth-note"></div></section>';
     document.body.appendChild(overlay);
     document.getElementById('accountButton').addEventListener('click', open); document.getElementById('authClose').addEventListener('click', close);
     overlay.addEventListener('click', function (event) { if (event.target === overlay) close(); });
