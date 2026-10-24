@@ -99,18 +99,18 @@ function publicUser(user) {
 function authRequired(user) { return json({ error: "login_required", message: "请先登录并兑换有效卡密" }, 401); }
 function entitlementRequired(user) { return user && user.entitlement_until && new Date(user.entitlement_until) > new Date(); }
 
-async function saveDecision(db, body, result) {
+async function saveDecision(db, body, result, userId) {
   if (!db) return false;
-  await db.prepare("INSERT INTO risk_decisions (symbol, side, requested_quantity, allowed_quantity, price, equity, decision, reasons) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(String(body.symbol || "UNKNOWN"), String(body.side || "buy"), Number(body.quantity), Number(result.quantity), Number(body.price), Number(body.equity), result.decision, JSON.stringify(result.reasons || []))
+  await db.prepare("INSERT INTO risk_decisions (user_id, symbol, side, requested_quantity, allowed_quantity, price, equity, decision, reasons) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(userId, String(body.symbol || "UNKNOWN"), String(body.side || "buy"), Number(body.quantity), Number(result.quantity), Number(body.price), Number(body.equity), result.decision, JSON.stringify(result.reasons || []))
     .run();
   return true;
 }
 
-async function saveQuality(db, result) {
+async function saveQuality(db, result, userId) {
   if (!db) return false;
-  await db.prepare("INSERT INTO data_quality_checks (score, status, block_new_entries, issues, warnings) VALUES (?, ?, ?, ?, ?)")
-    .bind(result.score, result.status, result.block_new_entries ? 1 : 0, JSON.stringify(result.issues || []), JSON.stringify(result.warnings || []))
+  await db.prepare("INSERT INTO data_quality_checks (user_id, score, status, block_new_entries, issues, warnings) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(userId, result.score, result.status, result.block_new_entries ? 1 : 0, JSON.stringify(result.issues || []), JSON.stringify(result.warnings || []))
     .run();
   return true;
 }
@@ -219,7 +219,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/risk/history") {
       const user = await authenticatedUser(request, env.DB); if (!entitlementRequired(user)) return user ? entitlementRequired(user) || json({ error: "entitlement_required", message: "请先兑换有效卡密" }, 403) : authRequired(user);
       if (!env.DB) return json({ error: "database_not_configured" }, 503);
-      const { results } = await env.DB.prepare("SELECT * FROM risk_decisions ORDER BY id DESC LIMIT 50").all();
+      const { results } = await env.DB.prepare("SELECT id, symbol, side, requested_quantity, allowed_quantity, price, equity, decision, reasons, created_at FROM risk_decisions WHERE user_id = ? ORDER BY id DESC LIMIT 50").bind(user.id).all();
       return json({ results });
     }
     if (request.method !== "POST") return json({ error: "not_found" }, 404);
@@ -228,13 +228,13 @@ export default {
       if (url.pathname === "/api/risk/check") {
         const user = await authenticatedUser(request, env.DB); if (!entitlementRequired(user)) return user ? json({ error: "entitlement_required", message: "请先兑换有效卡密" }, 403) : authRequired(user);
         const result = evaluateOrder(body);
-        result.persisted = await saveDecision(env.DB, body, result);
+        result.persisted = await saveDecision(env.DB, body, result, user.id);
         return json(result);
       }
       if (url.pathname === "/api/analysis/quality") {
         const user = await authenticatedUser(request, env.DB); if (!entitlementRequired(user)) return user ? json({ error: "entitlement_required", message: "请先兑换有效卡密" }, 403) : authRequired(user);
         const result = qualityReport(body.bars);
-        result.persisted = await saveQuality(env.DB, result);
+        result.persisted = await saveQuality(env.DB, result, user.id);
         return json(result);
       }
       return json({ error: "not_found" }, 404);
