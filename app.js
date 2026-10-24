@@ -4,7 +4,7 @@
   var $ = function (selector) { return document.querySelector(selector); };
   var $$ = function (selector) { return document.querySelectorAll(selector); };
   var state = { x: 0, y: 0, quadrant: '宏观坐标原点', macroValid: true, macroContributions: { pmi: 0, social: 0, m2: 0, yield: 0 }, posture: '均衡姿态', confidence: '低置信', rationaleScore: 0, rationaleSupport: [], rationaleCounter: [], allocationType: 'balance', allocationValues: [45, 25, 10, 20], triggerLabels: [], valuationType: 'stable', valuationCalculated: false, valuationZone: '等待计算', valuationRange: '', scenarioValues: [], phaseDecision: '暂不建议买入', phaseReady: false, behaviorLevel: '未完成', behaviorReady: false, behaviorBlocked: false, viewMode: 'full', lastDataChangeAt: '', lastCalculatedAt: '', summaryGenerated: false, activeRole: 1, undoSnapshot: null, history: [], carryover: 0 };
-  var APP_VERSION = '2.6.0-free';
+  var APP_VERSION = '2.6.1-free';
   var RULE_VERSION = 'R2.4';
   var FORMULA_VERSION = 'F1.3';
   state.safetyMargin = null;
@@ -1122,12 +1122,18 @@
       cloudStatus('账号记录已同步');
     }).catch(function (error) {
       if (epoch !== scopeEpoch) return;
+      if (error.status === 401 || error.status === 403 || error.status === 413) {
+        cloudDirty = false;
+        cloudReady = false;
+        cloudStatus(error.status === 413 ? '记录过大，请先导出备份' : '登录或卡密已失效，记录暂存在此浏览器');
+        return;
+      }
       if (error.status === 409) {
         return Promise.all([localDeskData(), cloudRequest('GET', null, token)]).then(function (parts) {
           if (epoch !== scopeEpoch) return;
           cloudRevision = parts[1].revision || 0;
           return applyDeskData(mergeDeskData(parts[0], parts[1].state)).then(function () { cloudDirty = true; });
-        });
+        }).catch(function () { if (epoch === scopeEpoch) { cloudDirty = true; cloudStatus('同步冲突，稍后重试'); } });
       }
       cloudDirty = true;
       cloudStatus('云端保存失败，记录仍在此浏览器');
