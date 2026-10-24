@@ -4,7 +4,7 @@
   var $ = function (selector) { return document.querySelector(selector); };
   var $$ = function (selector) { return document.querySelectorAll(selector); };
   var state = { x: 0, y: 0, quadrant: '宏观坐标原点', macroValid: true, macroContributions: { pmi: 0, social: 0, m2: 0, yield: 0 }, posture: '均衡姿态', confidence: '低置信', rationaleScore: 0, rationaleSupport: [], rationaleCounter: [], allocationType: 'balance', allocationValues: [45, 25, 10, 20], triggerLabels: [], valuationType: 'stable', valuationCalculated: false, valuationZone: '等待计算', valuationRange: '', scenarioValues: [], phaseDecision: '暂不建议买入', phaseReady: false, behaviorLevel: '未完成', behaviorReady: false, behaviorBlocked: false, viewMode: 'full', lastDataChangeAt: '', lastCalculatedAt: '', summaryGenerated: false, activeRole: 1, undoSnapshot: null, history: [], carryover: 0 };
-  var APP_VERSION = '2.5.0-free';
+  var APP_VERSION = '2.6.0-free';
   var RULE_VERSION = 'R2.4';
   var FORMULA_VERSION = 'F1.3';
   state.safetyMargin = null;
@@ -18,6 +18,14 @@
   var storageScope = 'pending';
   var storageReadyPromise = null;
   var storageInitialized = false;
+  var cloudRevision = 0;
+  var cloudReady = false;
+  var cloudTimer = null;
+  var cloudSaving = false;
+  var cloudDirty = false;
+  var scopeEpoch = 0;
+  var accountLoading = false;
+  var CLOUD_URL = 'https://ronghe-risk-free.shuyaolu93.workers.dev/api/desk/state';
   var navigationLockUntil = 0;
   var navigationTarget = 0;
   var scrollFrame = null;
@@ -1026,34 +1034,149 @@
     }).then(loadDraft).then(updateWorkflow);
   }
 
+  function cloudToken() { return window.RongheAuth && window.RongheAuth.getToken(); }
+  function cloudStatus(message) { if (exists('#storageState')) $('#storageState').textContent = message; }
+  function mergeDeskData(local, remote) {
+    local = local || {}; remote = remote || {};
+    var history = [].concat(local.history || [], remote.history || []);
+    var seen = {};
+    history = history.filter(function (item) {
+      var key = item && item.createdAt;
+      if (!key || seen[key]) return false;
+      seen[key] = true; return true;
+    }).sort(function (a, b) { return String(b.createdAt).localeCompare(String(a.createdAt)); }).slice(0, 20);
+    var localDate = Date.parse(local.draft && local.draft.createdAt) || 0;
+    var remoteDate = Date.parse(remote.draft && remote.draft.createdAt) || 0;
+    return { draft: remoteDate > localDate ? remote.draft : local.draft || remote.draft || null,
+      history: history, pauseUntil: Math.max(Number(local.pauseUntil) || 0, Number(remote.pauseUntil) || 0) };
+  }
+  function localDeskData() {
+    return Promise.all([getStoredData(draftKey), getStoredData(storageKey), getStoredData('behaviorPauseUntilV1')]).then(function (parts) {
+      return { draft: parts[0] || null, history: Array.isArray(parts[1]) ? parts[1] : [], pauseUntil: Number(parts[2]) || 0 };
+    });
+  }
+  function exportDeskData() {
+    localDeskData().then(function (data) {
+      var blob = new Blob([JSON.stringify({ format: 'ying-desk-v1', exportedAt: new Date().toISOString(), state: data }, null, 2)], { type: 'application/json' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'ying-research-' + isoDate(new Date()) + '.json';
+      document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+      showStatus('研究记录已导出');
+    });
+  }
+  function importDeskData(file) {
+    if (!file || file.size > 1000000) { showStatus('备份文件超过 1 MB'); return; }
+    file.text().then(function (raw) {
+      var input = JSON.parse(raw);
+      if (input.format !== 'ying-desk-v1' || !input.state || !Array.isArray(input.state.history)) throw new Error('备份格式不正确');
+      if (input.state.draft && (!Array.isArray(input.state.draft.form) || input.state.draft.schemaVersion !== 6)) throw new Error('草稿格式不正确');
+      if (input.state.history.length > 20) throw new Error('快照数量超过上限');
+      return localDeskData().then(function (current) {
+        return applyDeskData(mergeDeskData(input.state, current)).then(function () { queueCloudSave(); showStatus('备份已导入并开始同步'); });
+      });
+    }).catch(function (error) { showStatus(error.message || '导入失败'); });
+  }
+  function applyDeskData(data) {
+    cloudReady = false;
+    return Promise.all([setStoredData(draftKey, data.draft), setStoredData(storageKey, data.history), setStoredData('behaviorPauseUntilV1', data.pauseUntil)]).then(loadScopedAccountData).then(function () { cloudReady = true; });
+  }
+  function cloudRequest(method, body, tokenOverride) {
+    var token = tokenOverride || cloudToken();
+    if (!token) return Promise.reject(new Error('登录状态已失效'));
+    return fetch(CLOUD_URL, { method: method, cache: 'no-store', headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }).then(function (response) {
+      return response.json().then(function (data) { if (!response.ok) { var error = new Error(data.message || '云端保存失败'); error.status = response.status; throw error; } return data; });
+    });
+  }
+  function syncFromCloud(epoch) {
+    if (storageScope === 'guest' || storageScope === 'pending') return Promise.resolve();
+    cloudStatus('正在同步账号记录…');
+    return Promise.all([localDeskData(), cloudRequest('GET')]).then(function (parts) {
+      if (epoch !== scopeEpoch) return;
+      var local = parts[0], server = parts[1];
+      cloudRevision = server.revision || 0;
+      var merged = mergeDeskData(local, server.state);
+      var changed = JSON.stringify(merged) !== JSON.stringify(server.state);
+      return applyDeskData(merged).then(function () {
+        cloudStatus('账号记录已同步');
+        if (changed) queueCloudSave();
+      });
+    }).catch(function () { if (epoch === scopeEpoch) { cloudReady = true; cloudStatus('云端暂不可用，已保存到此浏览器'); } });
+  }
+  function queueCloudSave() {
+    if (!cloudReady || storageScope === 'guest' || storageScope === 'pending') return;
+    cloudDirty = true;
+    if (cloudTimer) window.clearTimeout(cloudTimer);
+    cloudTimer = window.setTimeout(flushCloudSave, 900);
+  }
+  function flushCloudSave() {
+    if (cloudSaving || !cloudDirty || !cloudReady) return;
+    var epoch = scopeEpoch;
+    var token = cloudToken();
+    cloudSaving = true; cloudDirty = false;
+    localDeskData().then(function (data) { if (epoch !== scopeEpoch) return null; return cloudRequest('PUT', { revision: cloudRevision, state: data }, token); }).then(function (result) {
+      if (!result) return;
+      if (epoch !== scopeEpoch) return;
+      cloudRevision = result.revision;
+      cloudStatus('账号记录已同步');
+    }).catch(function (error) {
+      if (epoch !== scopeEpoch) return;
+      if (error.status === 409) {
+        return Promise.all([localDeskData(), cloudRequest('GET', null, token)]).then(function (parts) {
+          if (epoch !== scopeEpoch) return;
+          cloudRevision = parts[1].revision || 0;
+          return applyDeskData(mergeDeskData(parts[0], parts[1].state)).then(function () { cloudDirty = true; });
+        });
+      }
+      cloudDirty = true;
+      cloudStatus('云端保存失败，记录仍在此浏览器');
+    }).finally(function () {
+      cloudSaving = false;
+      if (cloudDirty && epoch === scopeEpoch) { if (cloudTimer) window.clearTimeout(cloudTimer); cloudTimer = window.setTimeout(flushCloudSave, 3000); }
+    });
+  }
+
   function setAccountScope(scope) {
     var nextScope = scope ? 'account-' + String(scope).replace(/[^a-zA-Z0-9_-]/g, '_') : 'guest';
     if (nextScope === storageScope && storageInitialized) return Promise.resolve(true);
     storageScope = nextScope;
-    if (!storageReadyPromise) return Promise.resolve(true);
+    var epoch = ++scopeEpoch;
+    accountLoading = true;
+    if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+    cloudReady = false; cloudRevision = 0; cloudDirty = false;
+    if (cloudTimer) window.clearTimeout(cloudTimer);
+    if (!storageReadyPromise) { accountLoading = false; return Promise.resolve(true); }
     return storageReadyPromise.then(function () {
       resetForAccountScope();
       return loadScopedAccountData();
     }).then(function () {
+      return syncFromCloud(epoch);
+    }).then(function () {
       storageInitialized = true;
+      if (epoch === scopeEpoch) accountLoading = false;
       return true;
+    }).catch(function (error) {
+      if (epoch === scopeEpoch) accountLoading = false;
+      throw error;
     });
   }
 
   function setStoredData(key, value) {
     if (restoring) return Promise.resolve(false);
+    var syncable = key === draftKey || key === storageKey || key === 'behaviorPauseUntilV1';
     key += ':' + storageScope;
     var serialized;
     try { serialized = JSON.stringify(value); } catch (error) { return Promise.resolve(false); }
     var miniTool = window.xhs && window.xhs.miniTool;
     if (miniTool && typeof miniTool.setStorage === 'function') {
       try {
-        return Promise.resolve(miniTool.setStorage({ key: key, data: serialized })).then(function () { return true; }, function () {
-          try { window.localStorage.setItem(key, serialized); return true; } catch (fallbackError) { return false; }
+        return Promise.resolve(miniTool.setStorage({ key: key, data: serialized })).then(function () { if (syncable) queueCloudSave(); return true; }, function () {
+          try { window.localStorage.setItem(key, serialized); if (syncable) queueCloudSave(); return true; } catch (fallbackError) { return false; }
         });
       } catch (error2) {}
     }
-    try { window.localStorage.setItem(key, serialized); return Promise.resolve(true); }
+    try { window.localStorage.setItem(key, serialized); if (syncable) queueCloudSave(); return Promise.resolve(true); }
     catch (error3) { return Promise.resolve(false); }
   }
 
@@ -1120,12 +1243,12 @@
   }
 
   function scheduleAutoSave() {
-    if (restoring) return;
+    if (restoring || accountLoading) return;
     if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
     autoSaveTimer = window.setTimeout(function () {
       setStoredData(draftKey, captureSnapshot()).then(function (saved) {
         if (!exists('#storageState')) return;
-        var message = saved ? '草稿已保存到此浏览器' : '本次草稿未持久化';
+        var message = saved ? (cloudReady ? '草稿已保存，正在同步云端…' : '草稿已保存到此浏览器') : '本次草稿未持久化';
         if ($('#storageState').textContent !== message) $('#storageState').textContent = message;
       });
     }, 600);
@@ -1310,6 +1433,9 @@
 
   function initialize() {
     if (supportsFlexGap()) document.documentElement.classList.add('supports-flex-gap');
+    if (exists('#exportDesk')) $('#exportDesk').addEventListener('click', exportDeskData);
+    if (exists('#importDesk')) $('#importDesk').addEventListener('click', function () { $('#importDeskFile').click(); });
+    if (exists('#importDeskFile')) $('#importDeskFile').addEventListener('change', function (event) { importDeskData(event.target.files[0]); event.target.value = ''; });
     var inputs = $$('main input,main textarea');
     for (var n = 0; n < inputs.length; n += 1) if (!inputs[n].id) inputs[n].id = 'desk-field-' + n;
     setWeekRange();

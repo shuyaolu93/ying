@@ -24,7 +24,7 @@
         if (!response.ok || !data.user || !data.user.active ||
             new Date(data.user.entitlementUntil).getTime() <= Date.now()) throw new Error('inactive');
         if (typeof window.yingCandleLoad !== 'function') throw new Error('catalogue');
-        await window.yingCandleLoad(token);
+        await window.yingCandleLoad(token, data.user.id);
         if (!blocked) document.body.classList.remove('auth-pending');
       })
       .catch(function (error) {

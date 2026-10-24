@@ -74,7 +74,7 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .chapter-toggle{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--dim);font-size:12px;padding:5px 10px;white-space:nowrap}
 .chapter-toggle:hover{color:var(--text);border-color:var(--text)}
 .chapter-toggle .triangle{font-size:14px;line-height:1;transition:transform .15s}
-.chapter.collapsed .chapter-toggle .triangle{transform:rotate(-90deg)}
+.chapter.collapsed .chapter-toggle .triangle{transform:none}
 .chapter-body[hidden]{display:none}
 .ch-note{font-size:13px;color:var(--faint);margin:0 0 22px;max-width:720px}
 
@@ -93,6 +93,7 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .tag.down{color:var(--down);border-color:rgba(47,158,99,.35);background:rgba(47,158,99,.06)}
 .tag.neu{color:var(--dim)}
 .cell .ds{font-size:12.5px;color:var(--dim);margin-top:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cell-wrap{position:relative;min-width:0}.cell-wrap .cell{width:100%;height:100%;padding-right:46px}.cell-wrap .fav-toggle{position:absolute;right:12px;top:12px;border:1px solid var(--line2);border-radius:999px;width:29px;height:29px;background:var(--surface);color:var(--dim);font-size:17px;cursor:pointer}.cell-wrap .fav-toggle[aria-pressed="true"]{color:#ce8b12;border-color:#ce8b12}.reading-tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.reading-tools button{border:1px solid var(--line2);border-radius:999px;padding:6px 12px;background:var(--surface);color:var(--text);cursor:pointer}.reading-tools button.active{border-color:var(--text);font-weight:700}.source-panel{display:grid;gap:6px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:10px 0 14px;font-size:13px;color:var(--dim);line-height:1.5}.source-panel b{color:var(--text)}.source-panel .key-marks{display:flex;flex-wrap:wrap;gap:6px}.source-panel .key-marks span{border:1px solid var(--line2);border-radius:999px;padding:2px 8px}.diagram-label{font-size:12px;color:var(--dim);margin-top:10px}.modal-favorite{border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--text);padding:5px 12px;cursor:pointer}.modal-favorite[aria-pressed="true"]{color:#ce8b12;border-color:#ce8b12}
 .cell .lesson-cover{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;font-size:27px;font-family:var(--serif);font-weight:800;color:var(--text)}
 .lesson-cover small{font:12px var(--mono);letter-spacing:.12em;color:var(--faint)}
 .lesson-cover>span{font:700 42px var(--mono);line-height:1;color:var(--text)}
@@ -263,6 +264,7 @@ body.auth-pending::before{content:'正在验证账号并加载图谱…';visibil
     <select id="kindFilter" aria-label="按类型筛选"><option value="">全部类型</option></select>
   </div>
   <p class="find-count" id="findCount" role="status" aria-live="polite"></p>
+  <div class="reading-tools"><button id="favoriteFilter" type="button" aria-pressed="false">☆ 只看收藏</button><button id="continueReading" type="button" hidden>继续阅读</button></div>
 </header>
 
 <main id="main"></main>
@@ -274,6 +276,8 @@ body.auth-pending::before{content:'正在验证账号并加载图谱…';visibil
     <button class="close" data-close aria-label="关闭">×</button>
     <div class="m-top"><span class="ch" id="mCh"></span><h2 id="mTitle"></h2></div>
     <div class="m-tags" id="mTags"></div>
+    <button class="modal-favorite" id="modalFavorite" type="button" aria-pressed="false">☆ 收藏</button>
+    <div class="diagram-label" id="diagramLabel">形态教学示意 · 按书中定义绘制</div>
     <div class="m-candle" id="mCandle"></div>
     <div class="m-sec" id="mDefinitionLabel">形态定义</div>
     <div class="m-body" id="mBody"></div>
@@ -652,17 +656,42 @@ function caseFigHTML(o){
   const rsiLegend=o.id==='rsi'?`<div class="rsi-legend" aria-label="RSI 图例"><span class="curve">━ RSI 曲线</span><span class="high">┄ 70 超买线</span><span class="low">┄ 30 超卖线</span>${/14\.1/.test(o.fig||'')?'<span class="trend">┄ 上升趋势线</span>':''}</div>`:'';
   const frame=chart=>`${rsiLegend}<div class="chart-readout" aria-live="polite">轻触或移动到蜡烛线上查看日期、开高低收及指标</div><div class="chart-frame"><div class="case-chart${hasPanel?' with-subchart':''}" tabindex="0" role="group" aria-label="交互式案例图；左右方向键切换蜡烛线">${chart}</div><div class="chart-crosshair" aria-hidden="true"><i class="cross-v"></i><i class="cross-h"></i><span class="cross-price"></span><span class="cross-date"></span></div><div class="chart-controls" aria-label="图表缩放"><button type="button" data-chart-zoom="in" aria-label="放大图表">＋</button><button type="button" data-chart-zoom="out" aria-label="缩小图表">－</button><button type="button" data-chart-zoom="reset" aria-label="恢复图表原始大小">复位</button></div></div>`;
   return `<div class="case-fig">`+
-    (o.fig?`<div class="fig-cap">${o.fig}</div>`:'')+
+    `<div class="source-panel"><div><b>书中对应：</b>${o.fig||'本章概念说明'}</div><div><b>标的与位置：</b>${o.t||'概念示意'} · ${o.f||'未注明周期'} · ${o.d||'见书中说明'}</div>${marks?`<div class="key-marks"><b>关键标注：</b>${marks}</div>`:''}<div><b>核对依据：</b>${o.c||'按书中形态定义绘制，请结合前后趋势和实体位置判断。'}</div></div>`+
     (detailSvg?`<div class="chart-label">关键位置放大</div>${frame(detailSvg)}`:'')+
     `<div class="chart-label">${bookFigure?'书中图例走势重绘':'概念示意重绘'}</div>`+
     `<div class="chart-hint">${bookFigure?'依据书中图例文字和关键位置示意':'依据书中概念绘制'}；可横向滑动、用右下角按钮缩放，非原书图像或精确行情数据。${showGaps?'蓝色区间表示价格跳空。':''}${ma?'均线由示意收市价计算。':''}${indicator?(indicator.illustrative?'下方指数按书中信号位置重绘，仅表达背离与交叉关系，非实际指数读数。':'下方指数由示意数据计算。'):''}${o.id==='rsi'?'RSI区域中蓝线是指数曲线，红色70线为超买界，绿色30线为超卖界；图14.1紫色虚线是RSI上升趋势线。':''}${volume?'下方为示意相对成交量，非原书成交量数据。':''}</div>`+
     frame(svg)+
-    (marks?`<div class="mark-list">${marks}</div>`:'')+
     `<div class="ct"><span>标的：<b>${o.t||''}</b></span><span>周期：<b>${o.f||''}</b></span><span>时间：<b>${o.d||''}</b></span></div>`+
-    `<p>${o.c||''}</p></div>`;
+    `</div>`;
 }
 
 /* ---- 渲染 ---- */
+let READING_KEY='ying-candle-reading-v1';
+let reading={chapter:'ch01',last:'',favorites:[]};
+try{reading={...reading,...JSON.parse(localStorage.getItem(READING_KEY)||'{}')}}catch(e){}
+if(!Array.isArray(reading.favorites))reading.favorites=[];
+let favoritesOnly=false;
+function saveReading(){try{localStorage.setItem(READING_KEY,JSON.stringify(reading))}catch(e){}}
+let readingScrollTimer;
+window.addEventListener('scroll',()=>{clearTimeout(readingScrollTimer);readingScrollTimer=setTimeout(()=>{reading.scrollY=window.scrollY;saveReading()},350)},{passive:true});
+function updateContinue(){
+  const button=document.getElementById('continueReading');
+  const p=PATTERNS.find(x=>x.id===reading.last);
+  button.hidden=!p;
+  if(p)button.textContent='继续阅读 · '+p.cn;
+}
+function updateModalFavorite(id){
+  const button=document.getElementById('modalFavorite'),saved=reading.favorites.includes(id);
+  button.dataset.id=id;button.setAttribute('aria-pressed',String(saved));button.textContent=saved?'★ 已收藏':'☆ 收藏';
+}
+function toggleFavorite(id){
+  if(reading.favorites.includes(id))reading.favorites=reading.favorites.filter(x=>x!==id);
+  else reading.favorites.push(id);
+  saveReading();
+  document.querySelectorAll('.fav-toggle[data-id="'+id+'"]').forEach(b=>{b.setAttribute('aria-pressed',String(reading.favorites.includes(id)));b.textContent=reading.favorites.includes(id)?'★':'☆';b.setAttribute('aria-label',(reading.favorites.includes(id)?'取消收藏 ':'收藏 ')+PATTERNS.find(p=>p.id===id)?.cn)});
+  updateModalFavorite(id);
+  if(favoritesOnly)build();
+}
 function matchedPatterns(){
   const query=document.getElementById('patternSearch').value.trim().toLocaleLowerCase('zh-CN');
   const chapter=document.getElementById('chapterFilter').value;
@@ -671,7 +700,7 @@ function matchedPatterns(){
   return PATTERNS.filter(p=>{
     const ch=CHAPTERS.find(c=>c.id===p.ch);
     const haystack=[p.cn,p.en,p.desc,p.def,p.note,p.case?.t,p.source,...(p.sections||[]).flatMap(s=>[s.title,s.body]),ch?.num,ch?.name].join(' ').toLocaleLowerCase('zh-CN');
-    return (!query||haystack.includes(query))&&(!chapter||p.ch===chapter)&&(!signal||p.sig===signal)&&(!kind||p.kind===kind);
+    return (!query||haystack.includes(query))&&(!chapter||p.ch===chapter)&&(!signal||p.sig===signal)&&(!kind||p.kind===kind)&&(!favoritesOnly||reading.favorites.includes(p.id));
   });
 }
 function initFilters(){
@@ -682,32 +711,38 @@ function initFilters(){
 function build(){
   document.getElementById('mTotal').textContent=PATTERNS.length;
   const matches=matchedPatterns();
-  const filtering=Boolean(document.getElementById('patternSearch').value.trim()||document.getElementById('chapterFilter').value||document.getElementById('signalFilter').value||document.getElementById('kindFilter').value);
+  const filtering=Boolean(document.getElementById('patternSearch').value.trim()||document.getElementById('chapterFilter').value||document.getElementById('signalFilter').value||document.getElementById('kindFilter').value||favoritesOnly);
+  const chaptersWithMatches=CHAPTERS.filter(ch=>matches.some(p=>p.ch===ch.id));
+  const openId=reading.chapter===''&&!filtering?null:(chaptersWithMatches.some(ch=>ch.id===reading.chapter)?reading.chapter:chaptersWithMatches[0]?.id);
   document.getElementById('findCount').textContent=`找到 ${matches.length} / ${PATTERNS.length} 个条目`;
   const main=document.getElementById('main');
   main.innerHTML=CHAPTERS.map(ch=>{
     const list=matches.filter(p=>p.ch===ch.id);
     if(!list.length)return '';
-    return `<section class="chapter" id="${ch.id}">
+    const open=ch.id===openId;
+    return `<section class="chapter${open?'':' collapsed'}" id="${ch.id}">
       <div class="ch-head">
         <span class="ch-num">${ch.num}</span><h2>${ch.name}</h2><span class="en">${ch.en}</span><span class="count">${list.length} ${ch.unit||'个形态'}</span>
-        <button class="chapter-toggle" type="button" data-chapter-toggle="${ch.id}" aria-controls="${ch.id}-body" aria-expanded="true"><span class="triangle" aria-hidden="true">▾</span><span class="toggle-label">折叠</span></button>
+        <button class="chapter-toggle" type="button" data-chapter-toggle="${ch.id}" aria-controls="${ch.id}-body" aria-expanded="${open}"><span class="triangle" aria-hidden="true">${open?'▾':'▸'}</span><span class="toggle-label">${open?'折叠':'展开'}</span></button>
       </div>
-      <div class="chapter-body" id="${ch.id}-body">
+      <div class="chapter-body" id="${ch.id}-body" ${open?'':'hidden'}>
         <p class="ch-note">${ch.note}</p>
         <div class="grid" style="margin-top:18px">${list.map(cardHTML).join('')}</div>
       </div>
     </section>`;
   }).join('')||(filtering?'<p class="empty-search">没有找到匹配的条目，请换个关键词或筛选条件。</p>':'');
+  document.querySelectorAll('.tchip').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.goto===openId)));
+  updateContinue();
 }
 function cardHTML(p){
   const s=p.sig==='看涨'?'up':(p.sig==='看跌'?'down':'neu');
   const visual=p.lesson?`<span class="cv lesson-cover">${lessonDiagram(p)||`<small>${CHAPTERS.find(c=>c.id===p.ch)?.num||''}</small><span>${String(PATTERNS.filter(x=>x.ch===p.ch).indexOf(p)+1).padStart(2,'0')}</span>`}</span>`:`<span class="cv">${schematicSVG(p)}</span>`;
-  return `<button class="cell" data-id="${p.id}" aria-label="查看 ${p.cn} 详情">
+  return `<div class="cell-wrap"><button class="cell" data-id="${p.id}" aria-label="查看 ${p.cn} 详情">
     ${visual}
     <span class="title-row"><span class="tag">${p.kind}</span><span class="cn">${p.cn}</span>${p.sig?`<span class="tag ${s}">${p.sig}</span>`:''}</span>
     <span class="ds">${p.desc}</span>
-  </button>`;
+    <span class="ds">${p.fig||p.source||'书中章节内容'}</span>
+  </button><button class="fav-toggle" type="button" data-id="${p.id}" aria-label="${reading.favorites.includes(p.id)?'取消收藏':'收藏'} ${p.cn}" aria-pressed="${reading.favorites.includes(p.id)}">${reading.favorites.includes(p.id)?'★':'☆'}</button></div>`;
 }
 function tagHTML(p){
   const s=p.sig==='看涨'?'up':(p.sig==='看跌'?'down':'neu');
@@ -716,6 +751,7 @@ function tagHTML(p){
 }
 function openModal(id){
   const p=PATTERNS.find(x=>x.id===id); if(!p)return;
+  reading.last=id;reading.chapter=p.ch;saveReading();updateContinue();updateModalFavorite(id);
   const ch=CHAPTERS.find(c=>c.id===p.ch);
   document.getElementById('mCh').textContent=(ch?ch.num+' '+ch.name:'');
   document.getElementById('mTitle').textContent=p.cn;
@@ -725,6 +761,8 @@ function openModal(id){
   document.getElementById('mCaseLabel').textContent=p.lesson?'书中位置':'图例与说明';
   const diagram= p.lesson?lessonDiagram(p,true):schematicSVG(p,true);
   document.getElementById('mCandle').hidden=Boolean(p.lesson&&!diagram);
+  document.getElementById('diagramLabel').hidden=Boolean(p.lesson&&!diagram);
+  document.getElementById('diagramLabel').textContent=p.lesson?'章节概念示意 · 按书中说明绘制':'形态教学示意 · 按书中定义绘制';
   document.getElementById('mCandle').innerHTML=diagram;
   document.getElementById('mBody').innerHTML=p.lesson?`<p class="lesson-intro">${p.def}</p>${(p.sections||[]).map(s=>`<h3>${s.title}</h3><p>${s.body}</p>`).join('')}`:`<p>${p.def}</p>`;
   document.getElementById('mNote').textContent=p.note;
@@ -826,6 +864,7 @@ function selectChartCandle(chart,index){
 function setChapterOpen(id, open, shouldScroll){
   const el=document.getElementById(id);
   if(!el)return;
+  if(open)document.querySelectorAll('.chapter').forEach(other=>{if(other.id!==id){other.classList.add('collapsed');const body=other.querySelector('.chapter-body'),button=other.querySelector('.chapter-toggle'),nav=document.querySelector('.tchip[data-goto="'+other.id+'"]');if(body)body.hidden=true;if(button){button.setAttribute('aria-expanded','false');button.querySelector('.triangle').textContent='▸';button.querySelector('.toggle-label').textContent='展开'}if(nav)nav.setAttribute('aria-expanded','false')}});
   const body=el.querySelector('.chapter-body');
   const toggle=el.querySelector('[data-chapter-toggle]');
   const nav=document.querySelector('.tchip[data-goto="'+id+'"]');
@@ -839,6 +878,7 @@ function setChapterOpen(id, open, shouldScroll){
     if(triangle)triangle.textContent=open?'▾':'▸';
   }
   if(nav)nav.setAttribute('aria-expanded',String(open));
+  reading.chapter=open?id:'';saveReading();
   if(shouldScroll)el.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function toggleChapter(id, shouldScroll){
@@ -874,8 +914,12 @@ document.getElementById('main').addEventListener('click',e=>{
   if(toggle)toggleChapter(toggle.dataset.chapterToggle,false);
 });
 document.getElementById('main').addEventListener('click',e=>{
+  const favorite=e.target.closest('.fav-toggle');if(favorite){toggleFavorite(favorite.dataset.id);return;}
   const cell=e.target.closest('.cell'); if(cell)openModal(cell.dataset.id);
 });
+document.getElementById('modalFavorite').addEventListener('click',e=>toggleFavorite(e.currentTarget.dataset.id));
+document.getElementById('favoriteFilter').addEventListener('click',e=>{favoritesOnly=!favoritesOnly;e.currentTarget.setAttribute('aria-pressed',String(favoritesOnly));e.currentTarget.classList.toggle('active',favoritesOnly);e.currentTarget.textContent=favoritesOnly?'★ 只看收藏':'☆ 只看收藏';build()});
+document.getElementById('continueReading').addEventListener('click',()=>{const p=PATTERNS.find(x=>x.id===reading.last);if(!p)return;document.getElementById('patternSearch').value='';document.getElementById('chapterFilter').value='';document.getElementById('signalFilter').value='';document.getElementById('kindFilter').value='';favoritesOnly=false;document.getElementById('favoriteFilter').classList.remove('active');document.getElementById('favoriteFilter').setAttribute('aria-pressed','false');document.getElementById('favoriteFilter').textContent='☆ 只看收藏';reading.chapter=p.ch;saveReading();build();document.querySelector('.cell[data-id="'+p.id+'"]').scrollIntoView({behavior:'smooth',block:'center'});openModal(p.id)});
 document.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click',closeModal));
 document.getElementById('mCase').addEventListener('click',e=>{
   const button=e.target.closest('[data-chart-zoom]');
@@ -911,8 +955,9 @@ if(window.matchMedia('(max-width:700px)').matches){
   chapterNavToggle.querySelector('.chapter-nav-label').textContent='展开章节';
 }
 let catalogueLoaded=false;
-window.yingCandleLoad=async function(token){
+window.yingCandleLoad=async function(token,accountId){
   if(catalogueLoaded)return;
+  if(accountId){READING_KEY='ying-candle-reading-v1-account-'+String(accountId).replace(/[^0-9]/g,'');try{reading={chapter:'ch01',last:'',favorites:[],...JSON.parse(localStorage.getItem(READING_KEY)||'{}')}}catch(e){reading={chapter:'ch01',last:'',favorites:[]}}if(!Array.isArray(reading.favorites))reading.favorites=[]}
   const response=await fetch('https://ying-candle-data.shuyaolu93.workers.dev/api/candle/data',{
     cache:'no-store',headers:{authorization:'Bearer '+token}
   });
@@ -923,9 +968,10 @@ window.yingCandleLoad=async function(token){
   SCHEMATICS=data.schematics;
   initFilters();
   build();
+  if(Number(reading.scrollY)>0)requestAnimationFrame(()=>window.scrollTo(0,Number(reading.scrollY)));
   catalogueLoaded=true;
 };
 </script>
-<script src="./optional/auth-gated/candle-gate.js?v=1.1.0"></script>
+<script src="./optional/auth-gated/candle-gate.js?v=1.1.1"></script>
 </body>
 </html>

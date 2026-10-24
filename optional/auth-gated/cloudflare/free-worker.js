@@ -117,7 +117,7 @@ async function saveQuality(db, result) {
 
 export default {
   async fetch(request, env) {
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization, x-admin-secret", "access-control-allow-methods": "GET,POST,OPTIONS" } });
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization, x-admin-secret", "access-control-allow-methods": "GET,POST,PUT,OPTIONS" } });
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/") return Response.redirect("https://shuyaolu93.github.io/ying/", 302);
     if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB) });
@@ -162,6 +162,30 @@ export default {
     }
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       const user = await authenticatedUser(request, env.DB); return user ? json({ user: publicUser(user) }) : authRequired(user);
+    }
+    if (url.pathname === "/api/desk/state" && (request.method === "GET" || request.method === "PUT")) {
+      const user = await authenticatedUser(request, env.DB);
+      if (!user) return authRequired(user);
+      if (!entitlementRequired(user)) return json({ error: "entitlement_required", message: "请先兑换有效卡密" }, 403);
+      if (!env.DB) return json({ error: "database_not_configured" }, 503);
+      if (request.method === "GET") {
+        const row = await env.DB.prepare("SELECT payload, revision, updated_at FROM desk_state WHERE user_id = ?").bind(user.id).first();
+        return json(row ? { state: JSON.parse(row.payload), revision: row.revision, updatedAt: row.updated_at } : { state: null, revision: 0 });
+      }
+      try {
+        const body = await request.json();
+        const revision = Number(body.revision);
+        const state = body.state;
+        if (!Number.isInteger(revision) || revision < 0 || !state || typeof state !== "object" || Array.isArray(state) || !Array.isArray(state.history)) return json({ error: "invalid_state" }, 400);
+        const payload = JSON.stringify({ draft: state.draft || null, history: state.history.slice(0, 20), pauseUntil: Number(state.pauseUntil) || 0 });
+        if (payload.length > 900000) return json({ error: "state_too_large", message: "研究记录超过保存上限，请先导出备份" }, 413);
+        const now = new Date().toISOString();
+        const result = revision === 0
+          ? await env.DB.prepare("INSERT INTO desk_state (user_id, payload, revision, updated_at) VALUES (?, ?, 1, ?) ON CONFLICT(user_id) DO NOTHING").bind(user.id, payload, now).run()
+          : await env.DB.prepare("UPDATE desk_state SET payload = ?, revision = revision + 1, updated_at = ? WHERE user_id = ? AND revision = ?").bind(payload, now, user.id, revision).run();
+        if (!result.meta.changes) return json({ error: "revision_conflict", message: "另一台设备已更新记录，请重新加载" }, 409);
+        return json({ ok: true, revision: revision + 1, updatedAt: now });
+      } catch (error) { return json({ error: "state_save_failed", message: error.message }, 400); }
     }
     if (url.pathname === "/api/auth/logout" && request.method === "POST") {
       const token = requestToken(request); if (token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha256(token)).run(); return json({ ok: true });
