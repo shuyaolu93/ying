@@ -95,6 +95,7 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .cell .ds{font-size:12.5px;color:var(--dim);margin-top:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cell .lesson-cover{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;font-size:27px;font-family:var(--serif);font-weight:800;color:var(--text)}
 .lesson-cover small{font:12px var(--mono);letter-spacing:.12em;color:var(--faint)}
+.lesson-cover>span{font:700 42px var(--mono);line-height:1;color:var(--text)}
 .lesson-cover svg{width:100%;height:100%}
 
 /* ---------- 详情弹层 ---------- */
@@ -256,7 +257,7 @@ body.auth-pending::before{content:'正在验证账号并加载图谱…';visibil
     <span>红＝看涨 · 绿＝看跌</span>
   </div>
   <div class="findbar" role="search" aria-label="查找形态">
-    <label><span class="sr-only">搜索形态</span><input id="patternSearch" type="search" placeholder="搜索形态、章节或关键词" autocomplete="off"></label>
+    <label><span class="sr-only">搜索知识点或形态</span><input id="patternSearch" type="search" placeholder="搜索知识点、形态或章节" autocomplete="off"></label>
     <select id="chapterFilter" aria-label="按章节筛选"><option value="">全部章节</option></select>
     <select id="signalFilter" aria-label="按方向筛选"><option value="">全部方向</option><option>看涨</option><option>看跌</option><option>中性</option><option>双向</option></select>
     <select id="kindFilter" aria-label="按类型筛选"><option value="">全部类型</option></select>
@@ -701,7 +702,7 @@ function build(){
 }
 function cardHTML(p){
   const s=p.sig==='看涨'?'up':(p.sig==='看跌'?'down':'neu');
-  const visual=p.lesson?`<span class="cv lesson-cover">${lessonDiagram(p)||`<small>${CHAPTERS.find(c=>c.id===p.ch)?.num||''}</small><span>${p.cn}</span>`}</span>`:`<span class="cv">${schematicSVG(p)}</span>`;
+  const visual=p.lesson?`<span class="cv lesson-cover">${lessonDiagram(p)||`<small>${CHAPTERS.find(c=>c.id===p.ch)?.num||''}</small><span>${String(PATTERNS.filter(x=>x.ch===p.ch).indexOf(p)+1).padStart(2,'0')}</span>`}</span>`:`<span class="cv">${schematicSVG(p)}</span>`;
   return `<button class="cell" data-id="${p.id}" aria-label="查看 ${p.cn} 详情">
     ${visual}
     <span class="title-row"><span class="tag">${p.kind}</span><span class="cn">${p.cn}</span>${p.sig?`<span class="tag ${s}">${p.sig}</span>`:''}</span>
