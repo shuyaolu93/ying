@@ -77,6 +77,17 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .chapter.collapsed .chapter-toggle .triangle{transform:none}
 .chapter-body[hidden]{display:none}
 .ch-note{font-size:13px;color:var(--faint);margin:0 0 22px;max-width:720px}
+.chapter-guide{margin:0 0 22px;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--surface2)}
+.chapter-guide-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.chapter-guide-head h3{font:700 15px var(--serif);color:var(--text)}
+.chapter-guide-head span{font:11px var(--mono);color:var(--faint)}
+.chapter-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.guide-card{padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+.guide-card h4{display:flex;align-items:center;gap:8px;margin:0 0 7px;font-size:13px;color:var(--text)}
+.guide-card h4 b{display:inline-grid;place-items:center;width:21px;height:21px;border-radius:50%;background:var(--surface2);color:var(--dim);font:11px var(--mono);flex:none}
+.guide-card p{margin:0;color:var(--dim);font-size:12.5px;line-height:1.75}
+.guide-card strong{color:var(--text);font-weight:650}
+@media(max-width:700px){.chapter-guide{padding:14px}.chapter-guide-head{align-items:flex-start;flex-direction:column;gap:4px}.chapter-guide-grid{grid-template-columns:1fr}.guide-card{padding:12px}}
 
 /* ---------- 网格 ---------- */
 .grid{display:grid;grid-template-columns:1fr;gap:14px}
@@ -302,9 +313,9 @@ function applyTheme(t){
 }
 applyTheme(loadTheme()==='dark'?'dark':'light');
 const CHAPTERS=[
-  {id:'ch01',num:'第一章',name:'引论',en:'Introduction',note:'先建立使用蜡烛图的边界：它反映市场情绪，形态须结合趋势、位置、收市验证和风险管理。',unit:'个知识点'},
-  {id:'ch02',num:'第二章',name:'历史背景',en:'Historical Background',note:'从日本大米市场、堂岛交易所到本间宗久，理解蜡烛图技术产生的环境。',unit:'个知识点'},
-  {id:'ch03',num:'第三章',name:'蜡烛图的绘制方法',en:'Constructing Candlesticks',note:'学习开高低收、实体与影线、阳线与阴线、纺锤线与十字线；示意图按书中定义重新绘制。',unit:'个知识点'},
+  {id:'ch01',num:'第一章',name:'引论',en:'Introduction',note:'先理解蜡烛图能提供什么、怎样与其他分析工具配合，以及为什么单根形态不能脱离趋势与收市确认。',unit:'个知识点'},
+  {id:'ch02',num:'第二章',name:'历史背景',en:'Historical Background',note:'沿着日本商业发展、大阪堂岛米市与本间宗久的故事，了解早期价格观察方法的历史环境。',unit:'个知识点'},
+  {id:'ch03',num:'第三章',name:'蜡烛图的绘制方法',en:'Constructing Candlesticks',note:'从同一组开高低收数据出发，读懂实体、影线、纺锤线与十字线，并注意时间周期和未收市线的限制。',unit:'个知识点'},
   {id:'ch04',num:'第四章',name:'反转形态',en:'Reversal Patterns',note:'较强烈的反转信号：锤子线 / 上吊线（伞形线）、吞没（抱线）、乌云盖顶、刺透。'},
   {id:'ch05',num:'第五章',name:'星线',en:'Star Patterns',note:'以“星线”（小实体+与前实体跳空）为共同特征的反转形态。'},
   {id:'ch06',num:'第六章',name:'其他反转形态',en:'Other Reversal Patterns',note:'孕线、平头、捉腰带、乌鸦、三兵、三山三川、反击、圆形与塔形顶底等。'},
@@ -323,6 +334,32 @@ const CHAPTERS=[
   {id:'gB',num:'术语表B',name:'西方技术分析术语',en:'Glossary B: Western Terms',note:'书中西方技术分析术语：趋势线、支撑与阻挡、突破跳空、岛形、颈线、摆动指数等。'}
 ];
 let PATTERNS=[];
+const CHAPTER_GUIDES={
+  ch01:[
+    {title:'蜡烛图多表达了什么',body:'蜡烛图与线图使用同一组开市、最高、最低、收市数据。实体把开市到收市的方向和幅度放在一起，影线补充该时段触及的高低点，因此更容易观察买卖力量在一个周期内如何变化。'},
+    {title:'它适合怎样使用',body:'蜡烛图容易读，也常能比只看收市价的图表更早显示市场动能减弱或情绪转变。它还能与趋势线、移动平均线、回撤水平等西方工具共用；蜡烛图补充价格行为线索，其他工具帮助判断位置、趋势和目标。'},
+    {title:'把形态放回市场环境',body:'先问此前是上涨、下跌还是横盘，再看形态出现在支撑、阻挡或区间中什么位置，最后观察后续价格是否确认。相同外形处在不同趋势位置，含义可以相反；反转信号更准确地说是“原趋势可能改变”，不保证立即反向运行。'},
+    {title:'信号的边界与纪律',body:'形态定义可能有细微差异，实际走势也未必与示意图完全一致。很多信号要等周期收市后才成立；蜡烛图本身不提供可靠的价格目标，也不是万无一失的交易系统。应另设进出场、止损和风险报偿规则。'}
+  ],
+  ch02:[
+    {title:'从地方市场到全国米市',body:'战国时代之后，日本逐步统一，商业和农业发展；大阪凭港口与仓储条件成为全国性的物资集散和金融中心。统一市场让不同地区的大米供需与价格信息能够汇集、比较，为持续观察价格变化提供了条件。'},
+    {title:'堂岛交易所与米券',body:'淀屋家前院的大米交易活动逐步发展为大阪堂岛大米交易所。早期交易实物大米，后来交易以仓储大米为依据的米券；书中记载 1710 年后开始发行、接受米券。以未来收成作依据的“空米”交易被视作早期远期／期货交易。'},
+    {title:'本间宗久与酒田经验',body:'书中记述本间宗久生于 1724 年（译注指出另有 1729 年说法），先在酒田大米市场经营，之后进入大阪堂岛市场。他不仅关注现货供需，也记录天气和历史价格，并尝试理解交易者心理；“酒田战法”与他的市场经验相关。'},
+    {title:'历史故事怎样帮助学习',body:'这些背景说明价格分析与市场心理、信息传播和交易制度紧密相连，也解释了部分蜡烛图术语为何带有军事或生活意象。历史叙述提供的是方法形成的背景；不要把传奇化的战绩或后世传说，当成每种现代形态都已被精确验证的证据。'}
+  ],
+  ch03:[
+    {title:'先确定一根线代表的周期',body:'一根蜡烛线可以代表日内数分钟、一个交易日或一周等时间单位。图上的四个价格都必须来自同一个周期：开市价是该周期首笔价格，收市价是末笔价格，最高价和最低价是周期内的极值。'},
+    {title:'用四个价格定位各部分',body:'最高价是上影线顶端，最低价是下影线底端；开市价与收市价之间的范围是实体。若收市高于开市，收市端在实体上方；若收市低于开市，收市端在实体下方。没有上影线称光头线，没有下影线称光脚线。'},
+    {title:'实体与影线分别提供线索',body:'较长实体表示该周期开收之间移动较大，可作为动量线索；短实体表示开收接近，称纺锤线，颜色和影线长短都不是其定义核心。影线表示价格曾经触及、但没有以实体收在那里的区域。它们描述发生过什么，不单独解释发生原因。'},
+    {title:'十字线和小实体都要看上下文',body:'开市价与收市价相同或非常接近时，实体缩成横线，形成十字线。十字线常提示多空暂时平衡或犹豫，也可能是趋势变化的警告，但不能单凭它断定反转。结合前期走势、出现位置和后续收市确认。'},
+    {title:'颜色约定与未完成线',body:'原书用黑／白实体区分收低／收高；本网页用绿色表示看跌、红色表示看涨，颜色不同但价格关系不变。实时周期尚未结束时，开高低收仍可能变化，实体颜色、影线和形态都可能改变；分析时要分清临时线和最终收市线。'}
+  ]
+};
+function chapterGuideHTML(ch){
+  const guide=CHAPTER_GUIDES[ch.id];
+  if(!guide)return '';
+  return `<aside class="chapter-guide" aria-label="${ch.num}学习导读"><div class="chapter-guide-head"><h3>本章学习导读</h3><span>先理解概念，再看下方知识卡片</span></div><div class="chapter-guide-grid">${guide.map((item,index)=>`<article class="guide-card"><h4><b>${String(index+1).padStart(2,'0')}</b>${item.title}</h4><p>${item.body}</p></article>`).join('')}</div></aside>`;
+}
 </script>
 <script src="assets/schematics.js"></script>
 <script>
