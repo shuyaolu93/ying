@@ -19,14 +19,17 @@
     if (blocked || checking) return;
     checking = true;
     fetch(API + '/api/auth/me', { cache: 'no-store', headers: { authorization: 'Bearer ' + token } })
-      .then(function (response) {
-        return response.json().then(function (data) {
-          if (!response.ok || !data.user || !data.user.active ||
-              new Date(data.user.entitlementUntil).getTime() <= Date.now()) throw new Error('inactive');
-          document.body.classList.remove('auth-pending');
-        });
+      .then(async function (response) {
+        const data = await response.json();
+        if (!response.ok || !data.user || !data.user.active ||
+            new Date(data.user.entitlementUntil).getTime() <= Date.now()) throw new Error('inactive');
+        if (typeof window.yingCandleLoad !== 'function') throw new Error('catalogue');
+        await window.yingCandleLoad(token);
+        if (!blocked) document.body.classList.remove('auth-pending');
       })
-      .catch(function () { block('登录已失效或卡密已到期，请重新登录并兑换。'); })
+      .catch(function (error) {
+        block(error.message === 'inactive' ? '登录已失效或卡密已到期，请重新登录并兑换。' : '暂时无法加载图谱，请刷新页面重试。');
+      })
       .finally(function () { checking = false; });
   }
 

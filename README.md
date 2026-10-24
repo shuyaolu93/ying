@@ -7,7 +7,7 @@ Ying 是一个面向个人投资者的交易决策研究工作台，提供宏观
 - 研究工作台和日本蜡烛图页面均通过 GitHub Pages 在线提供。
 - 首次打开需要注册或登录账号，并兑换有效卡密后使用完整内容。
 - 个人中心提供账号信息、卡密到期日倒计时、修改密码和留言功能。
-- 账号会话、卡密校验和留言接口由配套 Cloudflare Worker 提供；研究草稿和决策快照按账号保存在浏览器中。
+- 账号会话、卡密校验、留言和蜡烛图数据接口由配套 Cloudflare Worker 提供；研究草稿和决策快照按账号保存在浏览器中。
 - `core/risk-engine.js` 提供仓位上限、回撤熔断、减仓放行、无效价格拒绝和压力测试。
 - `backend/` 保留本地分析与风控服务，部署说明见 [`backend/README.md`](backend/README.md)。
 
@@ -45,7 +45,8 @@ npm run test:browser
 | `index.html` | Ying 交易决策研究室网页入口，包含登录、卡密兑换和个人中心入口 |
 | `candle.html` | 日本蜡烛图形态与案例图谱，登录并兑换有效卡密后可访问 |
 | `app.js` | 网页版研究逻辑、决策摘要和浏览器端数据管理 |
-| `assets/data*.js` | 蜡烛图章节和形态数据 |
+| `assets/schematics.js` | 蜡烛图示意图渲染逻辑，图谱数据由鉴权接口加载 |
+| `optional/auth-gated/cloudflare/candle-data-worker.js` | 验证登录会话和卡密到期日后返回图谱数据 |
 | `optional/auth-gated/` | 登录、卡密、个人中心、留言和云端风控相关脚本及部署配置 |
 | `core/risk-engine.js` | 本地确定性风控核心 |
 
@@ -62,6 +63,8 @@ npm run test:browser
 9. 日本蜡烛图形态与案例学习
 
 研究数据和快照保存在当前浏览器，并按登录账号区分；卡密到期后需要重新兑换有效卡密才能继续使用受保护内容。
+
+蜡烛图图谱现存储在 Cloudflare D1 的 `candle_assets` 表，由 `ying-candle-data` Worker 验证有效会话与卡密后返回。公开的 GitHub Pages 版本不再直接加载 `assets/data*.js`。图谱的可编辑 JSON 备份应保存在私有位置，不要重新提交到此公开仓库。此前公开提交的历史仍可能被访问；此改动保护的是当前发布版本和后续更新，不能撤回已经公开过的数据，也无法阻止已获授权者保存浏览器收到的内容。
 
 ## 来源说明
 
