@@ -764,6 +764,7 @@ function build(){
       </div>
       <div class="chapter-body" id="${ch.id}-body" ${open?'':'hidden'}>
         <p class="ch-note">${ch.note}</p>
+        ${chapterGuideHTML(ch)}
         <div class="grid" style="margin-top:18px">${list.map(cardHTML).join('')}</div>
       </div>
     </section>`;
