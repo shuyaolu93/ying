@@ -904,6 +904,10 @@ document.querySelectorAll('.tchip').forEach(b=>{
       document.getElementById('chapterFilter').value='';
       document.getElementById('signalFilter').value='';
       document.getElementById('kindFilter').value='';
+      favoritesOnly=false;
+      document.getElementById('favoriteFilter').classList.remove('active');
+      document.getElementById('favoriteFilter').setAttribute('aria-pressed','false');
+      document.getElementById('favoriteFilter').textContent='☆ 只看收藏';
       build();
       setChapterOpen(b.dataset.goto,true,true);
     }else toggleChapter(b.dataset.goto,true);
