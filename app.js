@@ -4,7 +4,7 @@
   var $ = function (selector) { return document.querySelector(selector); };
   var $$ = function (selector) { return document.querySelectorAll(selector); };
   var state = { x: 0, y: 0, quadrant: '宏观坐标原点', macroValid: true, macroContributions: { pmi: 0, social: 0, m2: 0, yield: 0 }, posture: '均衡姿态', confidence: '低置信', rationaleScore: 0, rationaleSupport: [], rationaleCounter: [], allocationType: 'balance', allocationValues: [45, 25, 10, 20], triggerLabels: [], valuationType: 'stable', valuationCalculated: false, valuationZone: '等待计算', valuationRange: '', scenarioValues: [], phaseDecision: '暂不建议买入', phaseReady: false, behaviorLevel: '未完成', behaviorReady: false, behaviorBlocked: false, viewMode: 'full', lastDataChangeAt: '', lastCalculatedAt: '', summaryGenerated: false, activeRole: 1, undoSnapshot: null, history: [], carryover: 0 };
-  var APP_VERSION = '2.6.2-free';
+  var APP_VERSION = '2.6.3-free';
   var RULE_VERSION = 'R2.4';
   var FORMULA_VERSION = 'F1.3';
   state.safetyMargin = null;
@@ -1036,17 +1036,18 @@
 
   function cloudToken() { return window.RongheAuth && window.RongheAuth.getToken(); }
   function cloudStatus(message) { if (exists('#storageState')) $('#storageState').textContent = message; }
-  function mergeDeskData(local, remote) {
+  function mergeDeskData(local, remote, preferRemoteDraft) {
     local = local || {}; remote = remote || {};
     var history = [].concat(local.history || [], remote.history || []);
     var localDraft = local.draft && Array.isArray(local.draft.form) ? local.draft : null;
     var remoteDraft = remote.draft && Array.isArray(remote.draft.form) ? remote.draft : null;
     var localDate = Date.parse(localDraft && localDraft.createdAt) || 0;
     var remoteDate = Date.parse(remoteDraft && remoteDraft.createdAt) || 0;
-    var discardedDraft = remoteDate > localDate ? localDraft : remoteDraft;
-    if (localDraft && remoteDraft && discardedDraft &&
-        JSON.stringify({ form: localDraft.form, stateData: localDraft.stateData, summary: localDraft.summary }) !==
-        JSON.stringify({ form: remoteDraft.form, stateData: remoteDraft.stateData, summary: remoteDraft.summary }) &&
+    var winningDraft = preferRemoteDraft ? remoteDraft : (remoteDate > localDate ? remoteDraft : localDraft || remoteDraft || null);
+    var discardedDraft = winningDraft === remoteDraft ? localDraft : remoteDraft;
+    if (discardedDraft &&
+        JSON.stringify(localDraft && { form: localDraft.form, stateData: localDraft.stateData, summary: localDraft.summary }) !==
+        JSON.stringify(remoteDraft && { form: remoteDraft.form, stateData: remoteDraft.stateData, summary: remoteDraft.summary }) &&
         !history.some(function (item) { return item && item.label === '同步时保留的草稿' && item.createdAt === discardedDraft.createdAt; })) {
       history.push({ createdAt: discardedDraft.createdAt || new Date().toISOString(), label: '同步时保留的草稿', zone: discardedDraft.stateData && discardedDraft.stateData.valuationZone || '未估值', posture: '设备草稿', snapshot: discardedDraft });
     }
@@ -1056,7 +1057,7 @@
       if (!key || seen[key]) return false;
       seen[key] = true; return true;
     }).sort(function (a, b) { return String(b.createdAt).localeCompare(String(a.createdAt)); }).slice(0, 20);
-    return { draft: remoteDate > localDate ? remoteDraft : localDraft || remoteDraft || null,
+    return { draft: winningDraft,
       history: history, pauseUntil: Math.max(Number(local.pauseUntil) || 0, Number(remote.pauseUntil) || 0) };
   }
   function localDeskData() {
@@ -1083,7 +1084,7 @@
       if (input.state.draft && (!Array.isArray(input.state.draft.form) || input.state.draft.schemaVersion !== 6)) throw new Error('草稿格式不正确');
       if (input.state.history.length > 20) throw new Error('快照数量超过上限');
       return localDeskData().then(function (current) {
-        return applyDeskData(mergeDeskData(input.state, current)).then(function () { queueCloudSave(); showStatus('备份已导入并开始同步'); });
+        return applyDeskData(mergeDeskData(current, input.state, true)).then(function () { queueCloudSave(); showStatus('备份已导入并开始同步'); });
       });
     }).catch(function (error) { showStatus(error.message || '导入失败'); });
   }
