@@ -17,7 +17,7 @@ before(async () => {
 after(async () => { if (browser) await browser.close(); });
 
 async function openPage(t, options = {}) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const context = await browser.newContext({ viewport: options.viewport || { width: 390, height: 844 } });
   t.after(() => context.close());
   if (options.token) await context.addInitScript(token => localStorage.setItem('rongheAuthTokenV1', token), options.token);
   const page = await context.newPage();
@@ -70,7 +70,7 @@ async function openPage(t, options = {}) {
   await page.route('https://ying-candle-data.shuyaolu93.workers.dev/**', route => route.fulfill({
     contentType: 'application/json',
     headers: { 'access-control-allow-origin': 'https://ying.test' },
-    body: JSON.stringify({ patterns: [{ id: 'intro-test', ch: 'ch01', cn: '蜡烛图入门', en: 'Introduction', kind: '学习', sig: '中性', desc: '测试条目', def: '测试定义', note: '测试要点', lesson: true }], schematics: {} })
+    body: JSON.stringify({ patterns: options.patterns || [{ id: 'intro-test', ch: 'ch01', cn: '蜡烛图入门', en: 'Introduction', kind: '学习', sig: '中性', desc: '测试条目', def: '测试定义', note: '测试要点', lesson: true }], schematics: {} })
   }));
   await page.goto(`https://ying.test/${options.candle ? 'candle.html' : ''}`);
   return { page, calls };
@@ -144,4 +144,26 @@ test('candle page blocks an expired session while it remains open', async t => {
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await page.waitForFunction(() => document.body.textContent.includes('卡密已到期'));
   assert.equal(await page.locator('.chapter').count(), 0);
+});
+
+test('chapter 14 RSI panels stay readable and zoom controls do not cover them', async t => {
+  const candles = Array.from({ length: 39 }, (_, i) => [50 + i * .2, 51 + i * .2, 49 + i * .2, 50.5 + i * .2]);
+  const rsi = { id: 'rsi', ch: 'ch14', cn: '相对强弱指数', en: 'RSI', kind: '指标', sig: '中性', desc: '测试', def: '测试', note: '测试', fig: '图14.1 RSI', candle: candles, marks: [{ x: 8, y: 52 }], dates: candles.map((_, i) => `第${i + 1}日`), case2: { fig: '图14.2 RSI', candle: candles.slice(0, 36), marks: [], dates: candles.slice(0, 36).map((_, i) => `第${i + 1}日`) } };
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    const { page } = await openPage(t, { token: 'valid-token', candle: true, patterns: [rsi], viewport });
+    await page.waitForFunction(() => !document.body.classList.contains('auth-pending'));
+    await page.locator('.cell[data-id="rsi"]').click();
+    const charts = page.locator('#mCase .case-chart');
+    assert.equal(await charts.count(), 4);
+    const geometry = await page.locator('#mCase .chart-frame').first().evaluate(frame => {
+      const chart = frame.querySelector('.case-chart').getBoundingClientRect();
+      const controls = frame.querySelector('.chart-controls').getBoundingClientRect();
+      return { chartWidth: chart.width, chartBottom: chart.bottom, controlsTop: controls.top };
+    });
+    assert.ok(geometry.controlsTop >= geometry.chartBottom, 'zoom buttons are below the RSI chart');
+    if (viewport.width >= 900) assert.ok(geometry.chartWidth >= 620, 'desktop RSI chart uses the full case width');
+    assert.equal(await page.locator('#mCase .case-chart .kv-rsi-high').count(), 4);
+    assert.equal(await page.locator('#mCase .case-chart .kv-rsi-low').count(), 4);
+    assert.equal(await page.locator('#mCase .case-chart .kv-rsi-trend').count(), 2);
+  }
 });
