@@ -20,7 +20,7 @@ function evaluateOrder(order = {}) {
   const quantity = nonNegative(order.quantity, "quantity");
   const price = finite(order.price, "price");
   const equity = nonNegative(order.equity, "equity");
-  const currentPosition = finite(order.currentPosition || 0, "currentPosition");
+  const currentPosition = nonNegative(order.currentPosition || 0, "currentPosition");
   const maxPositionPct = finite(order.maxPositionPct, "maxPositionPct");
   const maxDrawdownPct = finite(order.maxDrawdownPct, "maxDrawdownPct");
   if (!["buy", "sell"].includes(side)) throw new Error("side must be buy or sell");
@@ -28,8 +28,11 @@ function evaluateOrder(order = {}) {
   if (maxPositionPct < 0 || maxPositionPct > 1 || maxDrawdownPct < 0 || maxDrawdownPct > 1) {
     throw new Error("risk percentages must be between 0 and 1");
   }
-  if (order.reduceOnly || (side === "sell" && currentPosition > 0)) {
-    return { decision: "allow", quantity: Math.min(quantity, currentPosition), reasons: ["risk-reducing order allowed"] };
+  if (order.reduceOnly && (side !== "sell" || currentPosition === 0)) {
+    return { decision: "reject", quantity: 0, reasons: ["order does not reduce an existing position"] };
+  }
+  if (side === "sell" && currentPosition > 0) {
+    return { decision: quantity > currentPosition ? "resize" : "allow", quantity: Math.min(quantity, currentPosition), reasons: ["risk-reducing order allowed"] };
   }
   if (drawdown(equity, order.highWaterMark) >= maxDrawdownPct) {
     return { decision: "reject", quantity: 0, reasons: ["drawdown circuit breaker is active"] };
@@ -90,11 +93,15 @@ async function authenticatedUser(request, db) {
   const token = requestToken(request);
   if (!token || !db) return null;
   const tokenHash = await sha256(token);
-  const row = await db.prepare("SELECT u.id, u.email, u.entitlement_until, s.expires_at AS session_expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > datetime('now')").bind(tokenHash).first();
-  return row || null;
+  const row = await db.prepare("SELECT u.id, u.email, u.entitlement_until, s.expires_at AS session_expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(tokenHash).first();
+  return row && Number.isFinite(Date.parse(row.session_expires_at)) && Date.parse(row.session_expires_at) > Date.now() ? row : null;
 }
-function publicUser(user) {
-  return { id: user.id, email: user.email, entitlementUntil: user.entitlement_until || null, active: Boolean(user.entitlement_until && new Date(user.entitlement_until) > new Date()) };
+function canViewMessages(user, env) {
+  const adminId = Number(env.MESSAGE_ADMIN_USER_ID);
+  return Boolean(user && Number.isSafeInteger(adminId) && adminId > 0 && user.id === adminId);
+}
+function publicUser(user, env) {
+  return { id: user.id, email: user.email, entitlementUntil: user.entitlement_until || null, active: Boolean(user.entitlement_until && new Date(user.entitlement_until) > new Date()), canViewMessages: canViewMessages(user, env) };
 }
 function authRequired(user) { return json({ error: "login_required", message: "请先登录并兑换有效卡密" }, 401); }
 function entitlementRequired(user) { return user && user.entitlement_until && new Date(user.entitlement_until) > new Date(); }
@@ -133,7 +140,7 @@ export default {
         const salt = randomToken(); const hash = await passwordHash(password, salt);
         const result = await env.DB.prepare("INSERT INTO users (email, password_hash, password_salt) VALUES (?, ?, ?)").bind(email, hash, salt).run();
         const user = { id: result.meta.last_row_id, email, entitlement_until: null }; const session = await createSession(env.DB, user);
-        return json({ user: publicUser(user), token: session.token, expiresAt: session.expiresAt }, 201);
+        return json({ user: publicUser(user, env), token: session.token, expiresAt: session.expiresAt }, 201);
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
     if (url.pathname === "/api/auth/login" && request.method === "POST") {
@@ -141,15 +148,18 @@ export default {
         const body = await request.json(); const email = String(body.email || "").trim().toLowerCase(); const password = String(body.password || "");
         const user = await env.DB.prepare("SELECT id, email, password_hash, password_salt, entitlement_until FROM users WHERE email = ?").bind(email).first();
         if (!user || (await passwordHash(password, user.password_salt)) !== user.password_hash) return json({ error: "invalid_credentials", message: "账号或密码不正确" }, 401);
-        const session = await createSession(env.DB, user); return json({ user: publicUser(user), token: session.token, expiresAt: session.expiresAt });
+        const session = await createSession(env.DB, user); return json({ user: publicUser(user, env), token: session.token, expiresAt: session.expiresAt });
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
     if (url.pathname === "/api/auth/password" && request.method === "POST") {
       const user = await authenticatedUser(request, env.DB); if (!user) return authRequired(user);
-      try { const body = await request.json(); const password = String(body.password || ""); if (password.length < 8) return json({ error: "weak_password", message: "密码至少 8 位" }, 400); const salt = randomToken(); const hash = await passwordHash(password, salt); await env.DB.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").bind(hash, salt, user.id).run(); return json({ ok: true }); } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
+      try { const body = await request.json(); const password = String(body.password || ""); if (password.length < 8) return json({ error: "weak_password", message: "密码至少 8 位" }, 400); const salt = randomToken(); const hash = await passwordHash(password, salt); await env.DB.batch([
+        env.DB.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").bind(hash, salt, user.id),
+        env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id)
+      ]); return json({ ok: true }); } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
     if (url.pathname === "/api/messages" && request.method === "GET") {
-      const user = await authenticatedUser(request, env.DB); if (!user) return authRequired(user); if (String(user.email) !== "1234567890") return json({ error: "forbidden", message: "留言内容仅管理员可查看" }, 403);
+      const user = await authenticatedUser(request, env.DB); if (!user) return authRequired(user); if (!canViewMessages(user, env)) return json({ error: "forbidden", message: "留言内容仅管理员可查看" }, 403);
       const rows = await env.DB.prepare("SELECT m.id, m.message, m.created_at, u.email FROM messages m JOIN users u ON u.id = m.user_id ORDER BY m.id DESC LIMIT 500").all(); return json({ messages: rows.results || [] });
     }
     if (url.pathname === "/api/messages" && request.method === "POST") {
@@ -161,7 +171,7 @@ export default {
       const rows = await env.DB.prepare("SELECT m.id, m.message, m.created_at, u.email FROM messages m JOIN users u ON u.id = m.user_id ORDER BY m.id DESC LIMIT 500").all(); return json({ messages: rows.results || [] });
     }
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
-      const user = await authenticatedUser(request, env.DB); return user ? json({ user: publicUser(user) }) : authRequired(user);
+      const user = await authenticatedUser(request, env.DB); return user ? json({ user: publicUser(user, env) }) : authRequired(user);
     }
     if (url.pathname === "/api/desk/state" && (request.method === "GET" || request.method === "PUT")) {
       const user = await authenticatedUser(request, env.DB);
@@ -205,7 +215,7 @@ export default {
           env.DB.prepare("INSERT INTO code_redemptions (code_id, user_id) VALUES (?, ?)").bind(activation.id, user.id),
           env.DB.prepare("UPDATE users SET entitlement_until = ? WHERE id = ?").bind(entitlement, user.id)
         ]);
-        return json({ ok: true, message: "卡密兑换成功", user: { id: user.id, email: user.email, entitlementUntil: entitlement, active: true } });
+        return json({ ok: true, message: "卡密兑换成功", user: { id: user.id, email: user.email, entitlementUntil: entitlement, active: true, canViewMessages: canViewMessages(user, env) } });
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
     if (url.pathname === "/api/admin/activation-codes" && request.method === "POST") {
