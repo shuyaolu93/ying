@@ -140,6 +140,7 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .case .case-chart:focus-visible{outline:2px solid #3286df;outline-offset:2px}
 .case .case-chart.with-subchart{height:390px}
 .case .case-chart svg{width:100%;height:100%;display:block;margin:0 auto}
+.chart-viewport{position:relative}
 .chart-crosshair{position:absolute;inset:0;border-radius:10px;overflow:hidden;pointer-events:none;display:none;z-index:2}
 .chart-crosshair.active{display:block}
 .chart-crosshair .cross-v,.chart-crosshair .cross-h{position:absolute;opacity:.85}
@@ -148,8 +149,7 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .chart-crosshair .cross-price,.chart-crosshair .cross-date{position:absolute;background:#2871bd;color:white;border-radius:3px;padding:1px 4px;font:11px var(--mono);white-space:nowrap}
 .chart-crosshair .cross-price{right:2px;top:var(--cross-y);transform:translateY(-50%)}
 .chart-crosshair .cross-date{bottom:2px;left:var(--cross-x);transform:translateX(-50%)}
-.chart-controls{position:absolute;right:16px;bottom:16px;display:flex;gap:5px;padding:4px;background:var(--surface);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow)}
-.chart-controls{z-index:3}
+.chart-controls{position:relative;display:flex;gap:5px;width:max-content;margin:8px 0 0 auto;padding:4px;background:var(--surface);border:1px solid var(--line2);border-radius:10px}
 .chart-controls button{width:32px;height:32px;border:1px solid var(--line2);border-radius:7px;background:var(--surface2);color:var(--text);font-size:20px;line-height:1;display:grid;place-items:center;cursor:pointer}
 .chart-controls button:hover{border-color:var(--text)}
 .chart-controls button:disabled{opacity:.4;cursor:default}
@@ -166,6 +166,7 @@ a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line2)}
 .case-figs{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;min-width:0}
 .case-fig{min-width:0}
 @media(min-width:900px){.case-figs.two{grid-template-columns:1fr 1fr;gap:24px}}
+@media(min-width:900px){.case-figs.two.rsi-figs{grid-template-columns:minmax(0,1fr)}}
 @media(min-width:900px){.case-figs.three .case-fig:last-child{grid-column:1/-1}}
 .fig-cap{font-size:14px;color:var(--text);font-weight:600;margin:2px 0 0;line-height:1.55}
 
@@ -199,7 +200,7 @@ html[data-theme="dark"] .kv-tlab.kv-res{fill:#FBBF24}
 .kv-ind-signal{fill:none;stroke:#e18a00;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .kv-rsi-high{stroke:#cf424a;stroke-width:1.8;stroke-dasharray:7 4}.kv-rsi-low{stroke:#258d68;stroke-width:1.8;stroke-dasharray:7 4}
 .kv-rsi-high-label{fill:#b93039}.kv-rsi-low-label{fill:#197550}.kv-rsi-label{font-size:12px;font-weight:800;paint-order:stroke;stroke:var(--surface);stroke-width:3px}
-.kv-rsi-trend{stroke:#7659b8;stroke-width:1.8;stroke-dasharray:5 4}.kv-rsi-trend-label{fill:#7659b8;font-size:11px;font-weight:800;paint-order:stroke;stroke:var(--surface);stroke-width:3px}
+.kv-rsi-trend{stroke:#7659b8;stroke-width:1.8;stroke-dasharray:5 4}
 .kv-ind-hist-up{fill:#30a46c;opacity:.8}.kv-ind-hist-down{fill:#ef4d52;opacity:.8}
 .kv-volume-up{fill:var(--up);opacity:.78}.kv-volume-down{fill:var(--down);opacity:.78}
 .kv-panel-label{fill:var(--dim);font-size:11px;font-weight:700}.kv-panel-grid{stroke:var(--line2);stroke-width:1;stroke-dasharray:4 4}
@@ -631,7 +632,7 @@ function caseChartSVG(series,opts){
     });
     if(ind.trendLine){
       const {from,to}=ind.trendLine;
-      s+=`<line class="kv-rsi-trend" x1="${x(from[0])}" y1="${iy(from[1])}" x2="${x(to[0])}" y2="${iy(to[1])}"/><text class="kv-rsi-trend-label" x="${x(to[0])+4}" y="${iy(to[1])-5}">RSI趋势线</text>`;
+      s+=`<line class="kv-rsi-trend" x1="${x(from[0])}" y1="${iy(from[1])}" x2="${x(to[0])}" y2="${iy(to[1])}"/>`;
     }
     s+=`<path class="kv-ind-main" d="${svgPath(ind.main,x,iy)}"/>`;
     if(ind.signal){
@@ -642,7 +643,7 @@ function caseChartSVG(series,opts){
       const v=ind.main[point.x];if(!Number.isFinite(v))return;
       s+=`<circle class="kv-markdot" cx="${x(point.x)}" cy="${iy(v)}" r="3.5"/><text class="kv-marklab" x="${x(point.x)+6}" y="${iy(v)-6}">${point.label}</text>`;
     });
-    s+=`<text class="kv-panel-label" x="${padL+5}" y="${pTop+10}">${ind.name}</text>`;
+    s+=`<text class="kv-panel-label" x="${padL+5}" y="${pTop+10}">${/RSI/.test(ind.name||'')?ind.name.split('：')[0]:ind.name}</text>`;
   }
   if(opts.volume){
     const values=opts.volume,max=Math.max(1,...values),base=H-padB-3,barH=66;
@@ -691,12 +692,12 @@ function caseFigHTML(o){
   const detailSvg=all.length>9&&!o.noDetail?caseChartSVG(all.slice(from,to),{trend:focusedTrend,marks:focusedMarks,dates:focusedDates,height:hasPanel?320:260,width:620,showGaps,ma:focusedMa,indicator:focusedIndicator,volume:volume&&volume.slice(from,to),barStyle}):'';
   const marks=(o.marks||[]).filter(m=>m&&m.label).map((m,i)=>`<span><b>${i+1}</b> ${m.label}</span>`).join('');
   const rsiLegend=o.id==='rsi'?`<div class="rsi-legend" aria-label="RSI 图例"><span class="curve">━ RSI 曲线</span><span class="high">┄ 70 超买线</span><span class="low">┄ 30 超卖线</span>${/14\.1/.test(o.fig||'')?'<span class="trend">┄ 上升趋势线</span>':''}</div>`:'';
-  const frame=chart=>`${rsiLegend}<div class="chart-readout" aria-live="polite">轻触或移动到蜡烛线上查看日期、开高低收及指标</div><div class="chart-frame"><div class="case-chart${hasPanel?' with-subchart':''}" tabindex="0" role="group" aria-label="交互式案例图；左右方向键切换蜡烛线">${chart}</div><div class="chart-crosshair" aria-hidden="true"><i class="cross-v"></i><i class="cross-h"></i><span class="cross-price"></span><span class="cross-date"></span></div><div class="chart-controls" aria-label="图表缩放"><button type="button" data-chart-zoom="in" aria-label="放大图表">＋</button><button type="button" data-chart-zoom="out" aria-label="缩小图表">－</button><button type="button" data-chart-zoom="reset" aria-label="恢复图表原始大小">复位</button></div></div>`;
+  const frame=chart=>`${rsiLegend}<div class="chart-readout" aria-live="polite">轻触或移动到蜡烛线上查看日期、开高低收及指标</div><div class="chart-frame"><div class="chart-viewport"><div class="case-chart${hasPanel?' with-subchart':''}" tabindex="0" role="group" aria-label="交互式案例图；左右方向键切换蜡烛线">${chart}</div><div class="chart-crosshair" aria-hidden="true"><i class="cross-v"></i><i class="cross-h"></i><span class="cross-price"></span><span class="cross-date"></span></div></div><div class="chart-controls" aria-label="图表缩放"><button type="button" data-chart-zoom="in" aria-label="放大图表">＋</button><button type="button" data-chart-zoom="out" aria-label="缩小图表">－</button><button type="button" data-chart-zoom="reset" aria-label="恢复图表原始大小">复位</button></div></div>`;
   return `<div class="case-fig">`+
     `<div class="source-panel"><div><b>书中对应：</b>${o.fig||'本章概念说明'}</div><div><b>标的与位置：</b>${o.t||'概念示意'} · ${o.f||'未注明周期'} · ${o.d||'见书中说明'}</div>${marks?`<div class="key-marks"><b>关键标注：</b>${marks}</div>`:''}<div><b>核对依据：</b>${o.c||'按书中形态定义绘制，请结合前后趋势和实体位置判断。'}</div></div>`+
     (detailSvg?`<div class="chart-label">关键位置放大</div>${frame(detailSvg)}`:'')+
     `<div class="chart-label">${bookFigure?'书中图例走势重绘':'概念示意重绘'}</div>`+
-    `<div class="chart-hint">${bookFigure?'依据书中图例文字和关键位置示意':'依据书中概念绘制'}；可横向滑动、用右下角按钮缩放，非原书图像或精确行情数据。${showGaps?'蓝色区间表示价格跳空。':''}${ma?'均线由示意收市价计算。':''}${indicator?(indicator.illustrative?'下方指数按书中信号位置重绘，仅表达背离与交叉关系，非实际指数读数。':'下方指数由示意数据计算。'):''}${o.id==='rsi'?'RSI区域中蓝线是指数曲线，红色70线为超买界，绿色30线为超卖界；图14.1紫色虚线是RSI上升趋势线。':''}${volume?'下方为示意相对成交量，非原书成交量数据。':''}</div>`+
+    `<div class="chart-hint">${bookFigure?'依据书中图例文字和关键位置示意':'依据书中概念绘制'}；可横向滑动、用图表下方按钮缩放，非原书图像或精确行情数据。${showGaps?'蓝色区间表示价格跳空。':''}${ma?'均线由示意收市价计算。':''}${indicator?(indicator.illustrative?'下方指数按书中信号位置重绘，仅表达背离与交叉关系，非实际指数读数。':'下方指数由示意数据计算。'):''}${o.id==='rsi'?'RSI区域中蓝线是指数曲线，红色70线为超买界，绿色30线为超卖界；图14.1紫色虚线是RSI上升趋势线。':''}${volume?'下方为示意相对成交量，非原书成交量数据。':''}</div>`+
     frame(svg)+
     `<div class="ct"><span>标的：<b>${o.t||''}</b></span><span>周期：<b>${o.f||''}</b></span><span>时间：<b>${o.d||''}</b></span></div>`+
     `</div>`;
@@ -814,7 +815,7 @@ function openModal(id){
   const figs=[caseFigHTML({id:p.id,ch:p.ch,cn:p.cn,focus:p.focus,candle:p.candle,trend:p.trend,marks:p.marks,dates:p.dates,fig:p.fig,t:cs1.t,f:cs1.f,d:cs1.d,c:cs1.c})];
   if(p.case2)figs.push(caseFigHTML({id:p.id,ch:p.ch,cn:p.cn,candle:p.case2.candle,trend:p.case2.trend,marks:p.case2.marks,dates:p.case2.dates,fig:p.case2.fig,t:p.case2.t,f:p.case2.f,d:p.case2.d,c:p.case2.c}));
   if(p.case3)figs.push(caseFigHTML({id:p.id,ch:p.ch,cn:p.cn,candle:p.case3.candle,trend:p.case3.trend,marks:p.case3.marks,dates:p.case3.dates,fig:p.case3.fig,t:p.case3.t,f:p.case3.f,d:p.case3.d,c:p.case3.c,noDetail:true}));
-  document.getElementById('mCase').innerHTML=`<div class="case-figs${p.case2?' two':''}${p.case3?' three':''}">${figs.join('')}</div>`;
+  document.getElementById('mCase').innerHTML=`<div class="case-figs${p.case2?' two':''}${p.case3?' three':''}${p.id==='rsi'?' rsi-figs':''}">${figs.join('')}</div>`;
   document.getElementById('modal').classList.add('open');
   document.querySelectorAll('#mCase .chart-frame').forEach(frame=>{
     const chart=frame.querySelector('.case-chart'),svg=chart.querySelector('svg');
