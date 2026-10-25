@@ -20,6 +20,7 @@ async function openPage(t, options = {}) {
   const context = await browser.newContext({ viewport: options.viewport || { width: 390, height: 844 } });
   t.after(() => context.close());
   if (options.token) await context.addInitScript(token => localStorage.setItem('rongheAuthTokenV1', token), options.token);
+  if (options.readingData) await context.addInitScript(data => localStorage.setItem('ying-candle-reading-v1-account-1', JSON.stringify(data)), options.readingData);
   const page = await context.newPage();
   const errors = [];
   const calls = [];
@@ -62,6 +63,16 @@ async function openPage(t, options = {}) {
     } else if (pathname === '/api/messages' && route.request().method() === 'GET') {
       if (user?.email !== '1234567890') { status = 403; data = { message: '禁止访问' }; }
       else data = { messages: [{ email: '<img src=x onerror=alert(1)>@example.test', message: '<script>alert(1)</script>' }] };
+    } else if (pathname === '/api/candle/reading' && options.readingUnavailable) {
+      status = 503; data = { error: 'unavailable' };
+    } else if (pathname === '/api/candle/reading' && options.readingStore) {
+      const store = options.readingStore;
+      if (route.request().method() === 'GET') data = { reading: store.reading || null, revision: store.revision || 0 };
+      else {
+        const body = route.request().postDataJSON();
+        if (body.revision !== (store.revision || 0)) { status = 409; data = { error: 'revision_conflict' }; }
+        else { store.reading = body.reading; store.revision = (store.revision || 0) + 1; data = { ok: true, revision: store.revision }; }
+      }
     }
     await route.fulfill({ status, contentType: 'application/json',
       headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' },
@@ -125,6 +136,14 @@ test('owner message list displays account names as text', async t => {
   assert.equal(await page.locator('#myMessages img, #myMessages script').count(), 0);
 });
 
+test('research backup download still works under the content security policy', async t => {
+  const { page } = await openPage(t, { token: 'valid-token' });
+  await page.waitForFunction(() => !document.body.classList.contains('auth-gated'));
+  const download = page.waitForEvent('download');
+  await page.locator('#exportDesk').click();
+  assert.match((await download).suggestedFilename(), /^ying-research-.*\.json$/);
+});
+
 test('candle page checks the session and chapter controls work on mobile', async t => {
   const { page } = await openPage(t, { token: 'valid-token', candle: true });
   await page.waitForFunction(() => !document.body.classList.contains('auth-pending'));
@@ -166,4 +185,62 @@ test('chapter 14 RSI panels stay readable and zoom controls do not cover them', 
     assert.equal(await page.locator('#mCase .case-chart .kv-rsi-low').count(), 4);
     assert.equal(await page.locator('#mCase .case-chart .kv-rsi-trend').count(), 2);
   }
+});
+
+test('candle catalogue treats API text as text and keeps keyboard focus inside its dialog', async t => {
+  const attack = '<img src=x onerror="window.__injected=true">';
+  const candles = Array.from({ length: 12 }, (_, i) => [50 + i, 51 + i, 49 + i, 50.5 + i]);
+  const pattern = { id: 'unsafe-text', ch: 'ch14', cn: '测试形态', en: 'Test', kind: attack, sig: '中性',
+    desc: attack, def: attack, note: '测试', fig: '图14.1', candle: candles,
+    dates: candles.map(() => attack), marks: [{ x: 3, y: 53, label: attack }],
+    trend: [{ from: [0, 50], to: [8, 58], label: attack }],
+    case: { t: attack, f: '日线', d: '测试', c: attack } };
+  const { page } = await openPage(t, { token: 'valid-token', candle: true, patterns: [pattern], readingStore: {} });
+  await page.waitForFunction(() => !document.body.classList.contains('auth-pending'));
+  assert.equal(await page.evaluate(() => Boolean(window.__injected)), false);
+  assert.equal(await page.locator('.cell img').count(), 0);
+  const cell = page.locator('.cell[data-id="unsafe-text"]');
+  await cell.click();
+  assert.equal(await page.evaluate(() => Boolean(window.__injected)), false);
+  assert.equal(await page.locator('#mCase img, #mBody img').count(), 0);
+  assert.equal(await page.locator('#mBody').textContent(), attack);
+  assert.equal(await page.evaluate(() => document.activeElement === document.querySelector('#modal .close')), true);
+  assert.equal(await page.locator('#main').evaluate(el => el.inert), true);
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await page.evaluate(() => document.querySelector('#modal').contains(document.activeElement)), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.evaluate(() => document.activeElement?.dataset.id), 'unsafe-text');
+  assert.equal(await page.locator('#main').evaluate(el => el.inert), false);
+});
+
+test('candle reading and favorite changes sync between devices', async t => {
+  const store = {};
+  const pattern = { id: 'intro-test', ch: 'ch01', cn: '蜡烛图入门', en: 'Introduction', kind: '学习', sig: '中性', desc: '测试条目', def: '测试定义', note: '测试要点', lesson: true };
+  const first = await openPage(t, { token: 'valid-token', candle: true, patterns: [pattern], readingStore: store });
+  await first.page.waitForFunction(() => !document.body.classList.contains('auth-pending'));
+  await first.page.locator('.fav-toggle[data-id="intro-test"]').click();
+  await first.page.locator('.cell[data-id="intro-test"]').click();
+  await first.page.keyboard.press('Escape');
+  for (let i = 0; i < 50 && !store.reading?.favorites.includes('intro-test'); i++) await new Promise(resolve => setTimeout(resolve, 100));
+  assert.equal(store.reading?.last, 'intro-test');
+  assert.equal(store.reading?.favorites.includes('intro-test'), true);
+
+  const second = await openPage(t, { token: 'valid-token', candle: true, patterns: [pattern], readingStore: store });
+  await second.page.waitForFunction(() => !document.body.classList.contains('auth-pending'));
+  assert.equal(await second.page.locator('.fav-toggle[data-id="intro-test"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await second.page.locator('#continueReading').isVisible(), true);
+  await second.page.locator('.fav-toggle[data-id="intro-test"]').click();
+  for (let i = 0; i < 50 && store.reading?.favorites.includes('intro-test'); i++) await new Promise(resolve => setTimeout(resolve, 100));
+  assert.equal(store.reading?.favorites.includes('intro-test'), false);
+  await first.page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await first.page.waitForFunction(() => document.querySelector('.fav-toggle[data-id="intro-test"]')?.getAttribute('aria-pressed') === 'false');
+});
+
+test('candle catalogue remains available with local progress while reading sync is offline', async t => {
+  const pattern = { id: 'intro-test', ch: 'ch01', cn: '蜡烛图入门', en: 'Introduction', kind: '学习', sig: '中性', desc: '测试条目', def: '测试定义', note: '测试要点', lesson: true };
+  const { page } = await openPage(t, { token: 'valid-token', candle: true, patterns: [pattern], readingUnavailable: true,
+    readingData: { chapter: 'ch01', last: 'intro-test', favorites: ['intro-test'] } });
+  await page.waitForFunction(() => !document.body.classList.contains('auth-pending'));
+  assert.equal(await page.locator('.fav-toggle[data-id="intro-test"]').getAttribute('aria-pressed'), 'true');
+  assert.match(await page.locator('#readingSyncStatus').textContent(), /保存在此浏览器/);
 });

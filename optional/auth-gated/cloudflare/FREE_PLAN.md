@@ -16,6 +16,13 @@ npx wrangler d1 execute ronghe-db --remote --file=./schema.sql
 
 把创建结果里的 `database_id` 写入 `wrangler.free.jsonc`，再重新部署。
 
+已有数据库升级蜡烛图阅读进度同步时，先执行迁移，再部署 Worker：
+
+```bash
+npx wrangler d1 execute ronghe-db --remote --file=./migrations/2026-10-26-candle-reading.sql
+npx wrangler deploy --config wrangler.free.jsonc
+```
+
 部署后会得到 `https://ronghe-risk-free.<账户>.workers.dev`。
 
 免费版提供健康检查、数据质量门和基础确定性风控接口。TradeHelper 的完整 pandas/numpy/PyTorch 分析后端需要完整 Python 容器，不能直接放入免费 Workers；后续升级方案后再启用 `wrangler.jsonc` 的 Container 配置。

@@ -81,3 +81,48 @@ test('cloud risk check rejects a buy labeled reduceOnly', async () => {
   assert.equal(result.data.decision, 'reject');
   assert.equal(result.data.quantity, 0);
 });
+
+test('candle reading is private to its account and uses revision checks', async () => {
+  let currentUser = session();
+  let stored = null;
+  const db = {
+    prepare(sql) {
+      let values = [];
+      return {
+        bind(...args) { values = args; return this; },
+        async first() {
+          if (sql.includes('FROM sessions s')) return currentUser;
+          if (sql.includes('FROM candle_reading')) return stored?.userId === values[0] ? stored : null;
+          return null;
+        },
+        async run() {
+          if (sql.startsWith('INSERT INTO candle_reading')) {
+            if (stored) return { meta: { changes: 0 } };
+            stored = { userId: values[0], payload: values[1], revision: 1, updated_at: values[2] };
+            return { meta: { changes: 1 } };
+          }
+          if (sql.startsWith('UPDATE candle_reading')) {
+            if (stored?.userId !== values[2] || stored.revision !== values[3]) return { meta: { changes: 0 } };
+            stored = { userId: values[2], payload: values[0], revision: stored.revision + 1, updated_at: values[1] };
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        }
+      };
+    }
+  };
+  const reading = { chapter: 'ch14', last: 'rsi', scrollY: 120, updatedAt: 1000,
+    favorites: ['rsi'], favoriteEdits: { rsi: { saved: true, at: 1000 } } };
+  assert.equal((await call('/api/candle/reading', { method: 'GET' }, { DB: db })).data.revision, 0);
+  assert.equal((await call('/api/candle/reading', { method: 'PUT', body: JSON.stringify({ revision: 0, reading }) }, { DB: db })).status, 200);
+  const saved = await call('/api/candle/reading', { method: 'GET' }, { DB: db });
+  assert.deepEqual(saved.data.reading.favorites, ['rsi']);
+  assert.equal((await call('/api/candle/reading', { method: 'PUT', body: JSON.stringify({ revision: 0, reading }) }, { DB: db })).status, 409);
+  assert.equal((await call('/api/candle/reading', { method: 'PUT', body: JSON.stringify({ revision: 1, reading: { ...reading, favoriteEdits: [] } }) }, { DB: db })).status, 400);
+  currentUser = session({ id: 8 });
+  assert.equal((await call('/api/candle/reading', { method: 'GET' }, { DB: db })).data.reading, null);
+  currentUser = session({ entitlement_until: null });
+  assert.equal((await call('/api/candle/reading', { method: 'GET' }, { DB: db })).status, 403);
+  currentUser = null;
+  assert.equal((await call('/api/candle/reading', { method: 'GET' }, { DB: db })).status, 401);
+});
