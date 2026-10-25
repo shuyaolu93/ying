@@ -22,6 +22,18 @@ test('allows a reducing order during a circuit break', function () {
   assert.equal(result.quantity, 5);
 });
 
+test('reduceOnly cannot turn a buy into a risk-reducing order', function () {
+  var result = risk.evaluateOrder({ side: 'buy', reduceOnly: true, quantity: 100, price: 100, equity: 8000, currentPosition: 10, maxPositionPct: 0.1, highWaterMark: 10000, maxDrawdownPct: 0.15 });
+  assert.equal(result.decision, 'reject');
+  assert.equal(result.quantity, 0);
+});
+
+test('oversized sell is labeled as resized and never exceeds the holding', function () {
+  var result = risk.evaluateOrder({ side: 'sell', quantity: 20, price: 100, equity: 8000, currentPosition: 10, maxPositionPct: 0.1, highWaterMark: 10000, maxDrawdownPct: 0.15 });
+  assert.equal(result.decision, 'resize');
+  assert.equal(result.quantity, 10);
+});
+
 test('rejects invalid prices instead of guessing', function () {
   assert.throws(function () {
     risk.evaluateOrder({ side: 'buy', quantity: 1, price: 0, equity: 10000, currentPosition: 0, maxPositionPct: 0.1, highWaterMark: 10000, maxDrawdownPct: 0.15 });

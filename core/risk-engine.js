@@ -46,7 +46,7 @@ function evaluateOrder(input) {
   var quantity = nonNegative(order.quantity, 'quantity');
   var price = finite(order.price, 'price');
   var equity = nonNegative(order.equity, 'equity');
-  var currentPosition = finite(order.currentPosition || 0, 'currentPosition');
+  var currentPosition = nonNegative(order.currentPosition || 0, 'currentPosition');
   var maxPositionPct = finite(order.maxPositionPct, 'maxPositionPct');
   var drawdown = calculateDrawdown(order.equity, order.highWaterMark);
   var maxDrawdownPct = finite(order.maxDrawdownPct, 'maxDrawdownPct');
@@ -56,9 +56,12 @@ function evaluateOrder(input) {
   if (maxPositionPct < 0 || maxPositionPct > 1) throw new Error('maxPositionPct must be between 0 and 1');
   if (maxDrawdownPct < 0 || maxDrawdownPct > 1) throw new Error('maxDrawdownPct must be between 0 and 1');
 
-  // A sell that reduces exposure must remain possible during a circuit break.
-  if (reduceOnly || (side === 'sell' && currentPosition > 0)) {
-    return { decision: 'allow', quantity: Math.min(quantity, currentPosition), reasons: ['risk-reducing order allowed'] };
+  // Only a sell against an existing long position reduces exposure.
+  if (reduceOnly && (side !== 'sell' || currentPosition === 0)) {
+    return { decision: 'reject', quantity: 0, reasons: ['order does not reduce an existing position'] };
+  }
+  if (side === 'sell' && currentPosition > 0) {
+    return { decision: quantity > currentPosition ? 'resize' : 'allow', quantity: Math.min(quantity, currentPosition), reasons: ['risk-reducing order allowed'] };
   }
 
   if (drawdown >= maxDrawdownPct) {

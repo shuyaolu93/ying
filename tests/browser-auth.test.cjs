@@ -38,7 +38,7 @@ async function openPage(t, options = {}) {
     }
   });
   let user = options.token === 'valid-token'
-    ? { id: 1, email: options.owner ? '1234567890' : 'reader@example.test', active: true, entitlementUntil: '2099-01-01T00:00:00Z' }
+    ? { id: 1, email: options.owner ? '1234567890' : 'reader@example.test', active: true, entitlementUntil: '2099-01-01T00:00:00Z', canViewMessages: Boolean(options.owner) }
     : null;
   await page.route('https://ronghe-risk-free.shuyaolu93.workers.dev/**', async route => {
     const pathname = new URL(route.request().url()).pathname;
@@ -54,7 +54,7 @@ async function openPage(t, options = {}) {
       else data = { user };
     } else if (pathname === '/api/auth/login' || pathname === '/api/auth/register') {
       const email = route.request().postDataJSON().email;
-      user = { id: 2, email, active: false, entitlementUntil: null };
+      user = { id: 2, email, active: false, entitlementUntil: null, canViewMessages: false };
       data = { user, token: 'new-token' };
     } else if (pathname === '/api/auth/redeem') {
       user = { ...user, active: true, entitlementUntil: '2099-01-01T00:00:00Z' };
@@ -67,6 +67,11 @@ async function openPage(t, options = {}) {
       headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' },
       body: JSON.stringify(data) });
   });
+  await page.route('https://ying-candle-data.shuyaolu93.workers.dev/**', route => route.fulfill({
+    contentType: 'application/json',
+    headers: { 'access-control-allow-origin': 'https://ying.test' },
+    body: JSON.stringify({ patterns: [{ id: 'intro-test', ch: 'ch01', cn: '蜡烛图入门', en: 'Introduction', kind: '学习', sig: '中性', desc: '测试条目', def: '测试定义', note: '测试要点', lesson: true }], schematics: {} })
+  }));
   await page.goto(`https://ying.test/${options.candle ? 'candle.html' : ''}`);
   return { page, calls };
 }
@@ -125,8 +130,9 @@ test('candle page checks the session and chapter controls work on mobile', async
   await page.waitForFunction(() => !document.body.classList.contains('auth-pending'));
   assert.equal(await page.locator('.chapter').count() > 0, true);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-  await page.click('#chapterNavToggle');
   assert.equal(await page.locator('#chapterNavToggle').getAttribute('aria-expanded'), 'false');
+  await page.click('#chapterNavToggle');
+  assert.equal(await page.locator('#chapterNavToggle').getAttribute('aria-expanded'), 'true');
   const toggle = page.locator('[data-chapter-toggle]').first();
   await toggle.click();
   assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
