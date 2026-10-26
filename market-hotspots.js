@@ -77,6 +77,11 @@
     }
     return fields.hotspotTitle || fields.hotspotOutput ? { updatedAt: draft.createdAt || '', fields: fields } : null;
   }
+  function legacyFromDesk(draft, history) {
+    var notes = [legacyNote(draft)];
+    if (Array.isArray(history)) for (var item of history) notes.push(legacyNote(item && item.snapshot));
+    return notes.filter(Boolean).sort(function (a, b) { return noteDate(b) - noteDate(a); })[0] || null;
+  }
   async function api(path, options, token) {
     var response = await fetch(API + path, Object.assign({ cache: 'no-store', headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' } }, options || {}));
     var data = await response.json();
@@ -138,12 +143,13 @@
     accountToken = token;
     var current = epoch;
     var local = stored('yingMarketDraftV1:' + scope);
-    var oldLocal = legacyNote(stored('tradeDecisionCardDraftV3:' + scope));
+    var oldLocal = legacyFromDesk(stored('tradeDecisionCardDraftV3:' + scope), stored('tradeDecisionCardSnapshotsV2:' + scope));
     var results = await Promise.allSettled([api('/api/market/notes', null, token), api('/api/desk/state', null, token)]);
     if (current !== epoch) return;
     var remote = results[0].status === 'fulfilled' ? results[0].value : null;
     revision = remote ? remote.revision : 0;
-    var oldRemote = results[1].status === 'fulfilled' ? legacyNote(results[1].value.state && results[1].value.state.draft) : null;
+    var oldDesk = results[1].status === 'fulfilled' ? results[1].value.state : null;
+    var oldRemote = oldDesk ? legacyFromDesk(oldDesk.draft, oldDesk.history) : null;
     var currentNotes = [local, remote && remote.note].filter(Boolean);
     var best = (currentNotes.length ? currentNotes : [oldLocal, oldRemote].filter(Boolean)).sort(function (a, b) { return noteDate(b) - noteDate(a); })[0];
     if (best) {

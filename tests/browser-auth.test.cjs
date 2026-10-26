@@ -22,6 +22,7 @@ async function openPage(t, options = {}) {
   if (options.token) await context.addInitScript(token => localStorage.setItem('rongheAuthTokenV1', token), options.token);
   if (options.readingData) await context.addInitScript(data => localStorage.setItem('ying-candle-reading-v1-account-1', JSON.stringify(data)), options.readingData);
   if (options.legacyMarketDraft) await context.addInitScript(data => localStorage.setItem('tradeDecisionCardDraftV3:account-1', JSON.stringify(data)), options.legacyMarketDraft);
+  if (options.legacyMarketHistory) await context.addInitScript(data => localStorage.setItem('tradeDecisionCardSnapshotsV2:account-1', JSON.stringify(data)), options.legacyMarketHistory);
   const page = await context.newPage();
   const errors = [];
   const calls = [];
@@ -77,7 +78,7 @@ async function openPage(t, options = {}) {
         else { marketNotes.set(key, { note: body.note, revision: body.revision + 1 }); data = { ok: true, revision: body.revision + 1 }; }
       }
     } else if (pathname === '/api/desk/state' && route.request().method() === 'GET') {
-      data = { state: options.legacyMarketDraft && user?.id === 1 ? { draft: options.legacyMarketDraft, history: [] } : null, revision: 0 };
+      data = { state: user?.id === 1 && (options.legacyMarketDraft || options.legacyMarketHistory) ? { draft: options.legacyMarketDraft || null, history: options.legacyMarketHistory || [] } : null, revision: 0 };
     } else if (pathname === '/api/messages' && route.request().method() === 'GET') {
       if (user?.email !== '1234567890') { status = 403; data = { message: '禁止访问' }; }
       else data = { messages: [{ email: '<img src=x onerror=alert(1)>@example.test', message: '<script>alert(1)</script>' }] };
@@ -234,6 +235,17 @@ test('old market draft is carried into the new page and old link redirects', asy
   await page.goto('https://ying.test/#marketHotspots');
   await page.waitForURL('https://ying.test/market.html');
   assert.equal(await page.locator('#hotspotTitle').inputValue(), '旧热点记录');
+});
+
+test('market page restores a legacy note kept only in decision history', async t => {
+  const history = [{ createdAt: '2026-10-25T13:00:00Z', snapshot: { createdAt: '2026-10-25T13:00:00Z', form: [
+    { id: 'hotspotTitle', type: 'text', value: '历史快照中的热点' },
+    { id: 'hotspotOutput', type: 'textarea', value: '历史解读文本' }
+  ] } }];
+  const { page } = await openPage(t, { token: 'valid-token', market: true, legacyMarketHistory: history });
+  await page.locator('.shell').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#hotspotTitle').inputValue(), '历史快照中的热点');
+  assert.equal(await page.locator('#hotspotOutput').inputValue(), '历史解读文本');
 });
 
 test('market page stays hidden without an active account', async t => {
