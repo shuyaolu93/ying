@@ -184,6 +184,7 @@ test('valuation requires real inputs and hold or sell summaries do not require a
 test('market update can be interpreted with evidence and is cleared between accounts', async t => {
   const { page } = await openPage(t, { token: 'valid-token', market: true });
   await page.locator('.shell').waitFor({ state: 'visible' });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.locator('#hotspotNewsList .market-news').first().waitFor();
   assert.equal(await page.locator('#hotspotNewsList img').count(), 0);
   await page.locator('#hotspotNewsList .market-news button').first().click();
@@ -240,6 +241,19 @@ test('market page stays hidden without an active account', async t => {
   assert.equal(await page.locator('#marketAccess').isVisible(), true);
   assert.equal(await page.locator('.shell').isVisible(), false);
   assert.equal(await page.locator('#hotspotNewsList .market-news').count(), 0);
+});
+
+test('market page does not reveal the prior account if login changes during cloud loading', async t => {
+  const { page, calls } = await openPage(t, { token: 'valid-token', market: true, authDelay: 250 });
+  for (let attempt = 0; attempt < 60 && !calls.includes('/api/market/notes'); attempt += 1) await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(calls.includes('/api/market/notes'), true);
+  await page.evaluate(() => {
+    localStorage.removeItem('rongheAuthTokenV1');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'rongheAuthTokenV1', oldValue: 'valid-token', newValue: null }));
+  });
+  await page.waitForTimeout(600);
+  assert.equal(await page.locator('#marketAccess').isVisible(), true);
+  assert.equal(await page.locator('.shell').isVisible(), false);
 });
 
 test('login, redeem, personal center and logout remain usable', async t => {

@@ -33,6 +33,7 @@
       if (newlyGranted) {
         if (!window.YingMarket) throw new Error('unavailable');
         await window.YingMarket.setAccount(data.user.id, token);
+        if (currentEpoch !== authEpoch) return;
         userId = data.user.id;
       }
       active = true;
