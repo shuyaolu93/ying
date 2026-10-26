@@ -13,10 +13,12 @@
     return fetch(API + path, options).then(function (response) { return response.json().then(function (data) { if (sentToken !== token) { var stale = new Error('账户已切换'); stale.stale = true; throw stale; } if (!response.ok) throw new Error(data.message || data.error || '请求失败'); return data; }); });
   }
   function show(message, good) { var note = document.getElementById('authNote'); if (!note) return; note.textContent = message; note.className = 'auth-note ' + (good ? 'good' : 'bad'); }
-  function coverMessage(message, good) { var note = document.getElementById('coverNote'); if (!note) return; note.textContent = message || ''; note.style.color = good ? '#2f7d5c' : '#b63b2b'; }
-  function enterApp() { document.body.classList.remove('auth-pending'); document.body.classList.remove('auth-gated'); coverMessage(''); window.dispatchEvent(new Event('ying:unlocked')); }
-  function showPending() { document.body.classList.remove('auth-gated'); document.body.classList.add('auth-pending'); }
-  function showCover(message) { document.body.classList.remove('auth-pending'); document.body.classList.add('auth-gated'); if (message) coverMessage(message); }
+  function coverMessage(message, good) { var note = document.getElementById('coverNote'); if (!note) return; note.textContent = message || ''; note.style.color = good ? '#8de3c6' : '#ff9f9b'; }
+  function enterApp() { document.body.classList.remove('auth-pending', 'auth-gated', 'home-intro'); document.getElementById('bookCover').classList.remove('form-open'); coverMessage(''); window.dispatchEvent(new Event('ying:unlocked')); }
+  function showPending() { document.body.classList.remove('auth-gated', 'home-intro'); document.body.classList.add('auth-pending'); }
+  function showCover(message) { document.body.classList.remove('auth-pending', 'home-intro'); document.body.classList.add('auth-gated'); if (message) { document.getElementById('bookCover').classList.add('form-open'); coverMessage(message); } }
+  function showIntro() { document.body.classList.remove('auth-pending', 'auth-gated'); document.body.classList.add('home-intro'); document.getElementById('bookCover').classList.remove('form-open'); coverMessage(''); }
+  function showIntroOnEntry() { return /\/$/.test(window.location.pathname) && !window.location.search && !window.location.hash; }
   function active() { return Boolean(user && user.active && new Date(user.entitlementUntil).getTime() > Date.now()); }
   function render() {
     var button = document.getElementById('accountButton'); if (!button) return;
@@ -60,7 +62,7 @@
   }
   function close() { var modal = document.getElementById('authModal'); if (modal) modal.hidden = true; document.body.classList.remove('auth-modal-open'); }
   function open() { var modal = document.getElementById('authModal'); if (modal) { modal.hidden = false; document.body.classList.add('auth-modal-open'); var panel = modal.querySelector('.auth-panel'); if (panel) panel.scrollTop = 0; render(); renderProfile(); } }
-  function syncAccount() {
+  function syncAccount(initialLoad) {
     var epoch = ++authEpoch;
     var granted = active();
     if (granted) showPending(); else showCover();
@@ -68,16 +70,16 @@
     var scope = granted ? String(user.id) : null;
     return Promise.resolve(window.RongheDesk ? window.RongheDesk.setAccount(scope) : null).then(function () {
       if (epoch !== authEpoch) return;
-      if (active()) { close(); enterApp(); }
+      if (active()) { close(); if (initialLoad && showIntroOnEntry()) showIntro(); else enterApp(); }
       else if (user) { close(); coverMessage('请兑换有效卡密后进入研究室'); }
     });
   }
-  function save(data) {
+  function save(data, initialLoad) {
     var sameAccount = active() && data.user && data.user.active && new Date(data.user.entitlementUntil).getTime() > Date.now() && user.id === data.user.id;
     token = data.token || token; user = data.user || user;
     try { if (token) localStorage.setItem(tokenKey, token); } catch (error) { show('浏览器存储不可用，本次登录仅在当前会话有效'); }
     if (sameAccount) { render(); renderProfile(); return Promise.resolve(); }
-    return syncAccount();
+    return syncAccount(initialLoad);
   }
   function clear(error) {
     if (error && error.stale) return;
@@ -93,6 +95,7 @@
       var field = document.getElementById(id); if (field) field.value = '';
     });
     window.scrollTo(0, 0);
+    document.getElementById('bookCover').classList.add('form-open');
     coverMessage('已退出登录', true);
     var email = document.getElementById('coverEmail'); if (email) email.focus();
   }
@@ -115,6 +118,16 @@
     var coverForm = document.getElementById('coverAuthForm');
     var coverEmail = document.getElementById('coverEmail');
     var coverPassword = document.getElementById('coverPassword');
+    document.getElementById('coverEnter').addEventListener('click', function () {
+      if (active()) return enterApp();
+      document.getElementById('bookCover').classList.add('form-open');
+      coverEmail.focus();
+    });
+    document.getElementById('coverBack').addEventListener('click', function () {
+      document.getElementById('bookCover').classList.remove('form-open');
+      coverMessage('');
+      document.getElementById('coverEnter').focus();
+    });
     if (coverForm) coverForm.addEventListener('submit', function (event) {
       event.preventDefault();
       coverMessage('正在验证…');
@@ -131,7 +144,7 @@
       coverMessage('正在兑换…');
       request('/api/auth/redeem', { method: 'POST', body: JSON.stringify({ code: code }) }).then(function (data) { return save(data).then(function () { coverMessage('兑换成功，有效期至 ' + String(data.user.entitlementUntil || '').slice(0, 10), true); }); }).catch(function (error) { coverMessage(error.message); });
     });
-    if (token) request('/api/auth/me').then(function (data) { return save(data); }).catch(clear); else { render(); showCover(); }
+    if (token) request('/api/auth/me').then(function (data) { return save(data, true); }).catch(clear); else { render(); showCover(); }
     window.setInterval(function () {
       if (!user) return;
       if (!active()) syncAccount();

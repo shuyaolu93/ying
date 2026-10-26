@@ -1,0 +1,229 @@
+.book-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  isolation: isolate;
+  background: radial-gradient(ellipse at 50% 58%, #11101e 0%, #080912 43%, #030407 78%);
+  color: #fff;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.auth-gated .book-cover,
+.home-intro .book-cover { display: flex; }
+
+.home-intro .shell,
+.home-intro .mobile-bar { visibility: hidden; }
+
+.book-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 24% 70%, #ab38801f, transparent 34%),
+    radial-gradient(ellipse at 76% 31%, #5168f12c, transparent 33%);
+}
+
+.book-cover #coverParticles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.book-cover .book-cover-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  flex: none;
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 62px 24px 90px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  text-align: center;
+}
+
+.book-cover .book-cover-inner::before,
+.book-cover .book-cover-inner::after { display: none; }
+
+.book-cover .book-cover-inner > .cover-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.book-cover .cover-intro { width: min(100%, 1020px); }
+
+.book-cover .cover-kicker {
+  display: block;
+  margin: 0 0 19px;
+  padding: 0;
+  background: linear-gradient(90deg, #81b9ff 5%, #dec8fa 53%, #d679d7 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  font: 800 clamp(1.7rem, 3.8vw, 3rem)/1.2 "PingFang SC", "Microsoft YaHei", sans-serif;
+  letter-spacing: .04em;
+}
+
+.book-cover .cover-title {
+  margin: 0;
+  padding: 0;
+  color: #fff;
+  font: 850 clamp(3.2rem, 7vw, 6rem)/1.13 "PingFang SC", "Microsoft YaHei", sans-serif;
+  letter-spacing: -.045em;
+  text-shadow: 0 5px 45px #05040f;
+}
+
+.book-cover .cover-title span { color: #f7f7fd; }
+
+.book-cover .cover-subtitle {
+  max-width: 720px;
+  margin: 31px auto 38px;
+  padding: 0;
+  color: #c8c6d5;
+  font: 400 clamp(.96rem, 1.6vw, 1.32rem)/1.8 "PingFang SC", "Microsoft YaHei", sans-serif;
+  letter-spacing: .02em;
+}
+
+.book-cover .cover-enter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  min-width: 210px;
+  min-height: 62px;
+  padding: 12px 32px;
+  border: 1px solid #ae84d6;
+  border-radius: 999px;
+  background: linear-gradient(125deg, #3d25465c, #11111acc 65%);
+  box-shadow: inset 0 0 22px #ba70bf20, 0 0 35px #954bad28;
+  color: #fff;
+  font: 700 1.12rem "PingFang SC", "Microsoft YaHei", sans-serif;
+  letter-spacing: .04em;
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.book-cover .cover-enter span { font-size: 1.55rem; line-height: 1; }
+.book-cover .cover-enter:hover { transform: translateY(-2px); box-shadow: inset 0 0 30px #ba70bf35, 0 0 44px #954bad50; }
+.book-cover .cover-enter:focus-visible,
+.book-cover .cover-back:focus-visible,
+.book-cover .cover-form button:focus-visible { outline: 3px solid #a6bdff; outline-offset: 3px; }
+
+.book-cover .cover-motto {
+  max-width: none;
+  margin: 28px 0 0;
+  padding: 0;
+  color: #9994ae;
+  font: 400 .78rem/1.5 "PingFang SC", "Microsoft YaHei", sans-serif;
+  letter-spacing: .18em;
+}
+
+.book-cover .cover-bottom {
+  position: absolute;
+  right: 28px;
+  bottom: 20px;
+  left: 28px;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  color: #7d7a90;
+  font: 500 .67rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .18em;
+  pointer-events: none;
+}
+
+.book-cover:not(.form-open) .cover-form { display: none; }
+.book-cover.form-open .cover-intro { display: none; }
+
+.book-cover.form-open .cover-form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 440px);
+  margin: 0;
+  padding: 30px;
+  border: 1px solid #655a80;
+  border-radius: 22px;
+  background: #11111ddf;
+  box-shadow: 0 20px 80px #0009, inset 0 1px #ffffff13;
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  color: #f8f7ff;
+  text-align: left;
+}
+
+.book-cover .cover-back {
+  align-self: flex-start;
+  min-height: 30px;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #c8bde2;
+  font-size: .82rem;
+}
+
+.book-cover .form-heading { margin-bottom: 8px; color: #fff; }
+.book-cover .form-heading small { color: #aaa6ba; }
+.book-cover .cover-form label { color: #c9c5d7; }
+.book-cover .cover-form input,
+.book-cover .profile-center input,
+.book-cover .profile-center textarea {
+  border: 1px solid #58546b;
+  border-radius: 10px;
+  background: #1b1b2b;
+  color: #fff;
+}
+.book-cover .cover-form input::placeholder { color: #817d90; }
+.book-cover .cover-form input:focus { border-color: #ac95e9; box-shadow: 0 0 0 3px #a28fdf30; }
+.book-cover .cover-actions button,
+.book-cover .redeem-inline button { border-radius: 10px; }
+.book-cover .cover-actions .cover-primary { border: 1px solid #8d78d3; background: linear-gradient(110deg, #6669bc, #9c62ad); color: #fff; }
+.book-cover .cover-actions .cover-secondary,
+.book-cover .redeem-inline button { border: 1px solid #5e5871; background: #242337; color: #f2f0fa; }
+.book-cover .redeem-inline { border-top-color: #474354; }
+.book-cover .cover-note { color: #ff9f9b; }
+
+@media (max-width: 700px) {
+  .book-cover .book-cover-inner { min-height: 100vh; min-height: 100dvh; padding: 50px 22px 75px; }
+  .book-cover .cover-kicker { font-size: clamp(1.45rem, 7vw, 2rem); }
+  .book-cover .cover-title { font-size: clamp(3rem, 14vw, 4.7rem); line-height: 1.18; }
+  .book-cover .cover-subtitle { margin: 24px auto 31px; }
+  .book-cover .cover-enter { min-height: 58px; }
+  .book-cover .cover-motto { font-size: .66rem; letter-spacing: .08em; }
+  .book-cover .cover-bottom { right: 18px; bottom: 14px; left: 18px; font-size: .57rem; }
+  .book-cover.form-open .cover-form { padding: 24px; }
+}
+
+@media (max-width: 380px) {
+  .book-cover .cover-break { display: none; }
+  .book-cover .cover-title { font-size: 2.8rem; }
+  .book-cover .cover-motto { letter-spacing: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-cover .cover-enter { transition: none; }
+}

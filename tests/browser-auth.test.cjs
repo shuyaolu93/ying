@@ -33,7 +33,7 @@ async function openPage(t, options = {}) {
     const file = pathname === '/' ? 'index.html' : pathname.slice(1);
     try {
       await route.fulfill({
-        contentType: file.endsWith('.js') ? 'application/javascript' : 'text/html',
+        contentType: file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html',
         body: await fs.readFile(path.join(root, file))
       });
     } catch {
@@ -102,7 +102,7 @@ async function openPage(t, options = {}) {
     headers: { 'access-control-allow-origin': 'https://ying.test' },
     body: JSON.stringify({ patterns: options.patterns || [{ id: 'intro-test', ch: 'ch01', cn: '蜡烛图入门', en: 'Introduction', kind: '学习', sig: '中性', desc: '测试条目', def: '测试定义', note: '测试要点', lesson: true }], schematics: {} })
   }));
-  await page.goto(`https://ying.test/${options.candle ? 'candle.html' : options.market ? 'market.html' : ''}`);
+  await page.goto(`https://ying.test/${options.candle ? 'candle.html' : options.market ? 'market.html' : options.token && !options.root ? 'index.html' : ''}`);
   return { page, calls };
 }
 
@@ -112,6 +112,26 @@ test('new visitor sees the login page before content', async t => {
   assert.equal(await page.locator('.shell').isVisible(), false);
   assert.equal(await page.locator('body').getAttribute('class').then(s => s.includes('auth-gated')), true);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+});
+
+test('homepage cover opens and closes the login form', async t => {
+  const { page } = await openPage(t);
+  await page.locator('#bookCover').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#coverAuthForm').isVisible(), false);
+  await page.locator('#coverEnter').click();
+  assert.equal(await page.locator('#coverAuthForm').isVisible(), true);
+  await page.locator('#coverBack').click();
+  assert.equal(await page.locator('#coverAuthForm').isVisible(), false);
+});
+
+test('active account sees the homepage cover before opening the desk', async t => {
+  const { page } = await openPage(t, { token: 'valid-token', root: true });
+  await page.waitForFunction(() => document.body.classList.contains('home-intro'));
+  assert.equal(await page.locator('#bookCover').isVisible(), true);
+  assert.equal(await page.locator('.shell').isVisible(), false);
+  await page.locator('#coverEnter').click();
+  assert.equal(await page.locator('#bookCover').isVisible(), false);
+  assert.equal(await page.locator('.shell').isVisible(), true);
 });
 
 test('expired session never reveals content during verification', async t => {
@@ -323,6 +343,7 @@ test('market page does not reveal the prior account if login changes during clou
 
 test('login, redeem, personal center and logout remain usable', async t => {
   const { page, calls } = await openPage(t);
+  await page.click('#coverEnter');
   await page.fill('#coverEmail', '12345678');
   await page.fill('#coverPassword', 'password123');
   await page.locator('#coverAuthForm button[type="submit"]').click();

@@ -149,6 +149,7 @@
   
     .header-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.site-switcher{display:flex;gap:6px;align-items:center}.site-switcher a{display:inline-flex;align-items:center;min-height:32px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font:700 .68rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.03em;text-decoration:none;transition:.15s}.site-switcher a:hover,.site-switcher a.active{border-color:var(--red);color:var(--red);background:#fffaf0}.book-cover-inner .cover-switch{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.book-cover-inner .cover-switch a{color:#776f64;font-size:.72rem;text-decoration:none;border-bottom:1px solid #b7a78d;padding-bottom:2px}
 </style>
+<link rel="stylesheet" href="assets/home-cover.css?v=1" />
 </head>
 <body class="auth-pending">
   <main class="shell">
@@ -197,17 +198,20 @@
     <p class="disclaimer">本工具用于信息整理与风险纪律，不构成任何投资建议。宏观指标与市场信息请以官方最新发布数据为准。</p>
   </main>
 
-  <div class="book-cover" id="bookCover" aria-label="账户登录">
+  <div class="book-cover" id="bookCover" aria-label="盈 · 网站首页封面">
+    <canvas id="coverParticles" aria-hidden="true"></canvas>
     <section class="book-cover-inner">
-      <div>
-        <div class="cover-kicker">YING · DECISION DESK</div>
-        <h2 class="cover-title">交易决策<br>研究室</h2>
-        <p class="cover-subtitle">规则先于情绪 · 账号记录云端同步</p>
-        <div class="cover-rule"></div>
-        <p class="cover-motto">登录并兑换有效卡密后，开始使用完整的研究工作台。</p>
-        
+      <div class="cover-content">
+        <div class="cover-intro">
+          <p class="cover-kicker">盈 · 交易决策研究室</p>
+          <h2 class="cover-title">看清市场<br><span>再做决定</span></h2>
+          <p class="cover-subtitle">从市场热点到估值与风险纪律，<br class="cover-break">让每一步判断都有迹可循。</p>
+          <button class="cover-enter" type="button" id="coverEnter">进入研究室 <span aria-hidden="true">→</span></button>
+          <p class="cover-motto">市场热点&nbsp; · &nbsp;交易决策&nbsp; · &nbsp;日本蜡烛图</p>
+        </div>
         <form class="cover-form" id="coverAuthForm">
-          <div class="form-heading"><span>账号登录</span><small>登录后兑换卡密即可使用</small></div>
+          <button class="cover-back" type="button" id="coverBack">← 返回封面</button>
+          <div class="form-heading"><span>账号登录</span><small>登录并兑换有效卡密后进入研究室</small></div>
           <label>账号<input id="coverEmail" type="text" autocomplete="username" inputmode="numeric" placeholder="邮箱或 8 位以上数字" required></label>
           <label>密码<input id="coverPassword" type="password" autocomplete="current-password" placeholder="至少 8 位" required></label>
           <div class="cover-actions"><button class="cover-primary" type="submit">登录</button><button class="cover-secondary" type="button" id="coverRegister">注册账号</button></div>
@@ -216,13 +220,13 @@
           <div class="cover-note" id="coverNote" role="status" aria-live="polite"></div>
         </form>
       </div>
-      <div class="cover-footer"><span>ACCOUNT ACCESS</span><span>YING / 2.6</span></div>
-      
     </section>
+    <div class="cover-bottom" aria-hidden="true"><span>YING / DECISION DESK</span><span>规则先于情绪</span></div>
   </div>
   <div class="mobile-bar" aria-label="移动端操作"><button type="button" id="previousStep">上一步</button><button type="button" id="mobileSummary">生成摘要</button><button type="button" id="nextStep" class="primary-step">下一步</button></div>
   <script src="core/risk-engine.js"></script>
   <script src="app.js?v=2.6.7-market-page"></script>
-  <script src="optional/auth-gated/auth.js?v=1.3.2-hotspots"></script>
+  <script src="assets/home-cover.js?v=1"></script>
+  <script src="optional/auth-gated/auth.js?v=1.3.3-home-cover"></script>
 </body>
 </html>
