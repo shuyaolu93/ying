@@ -149,7 +149,7 @@
   
     .header-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.site-switcher{display:flex;gap:6px;align-items:center}.site-switcher a{display:inline-flex;align-items:center;min-height:32px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font:700 .68rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.03em;text-decoration:none;transition:.15s}.site-switcher a:hover,.site-switcher a.active{border-color:var(--red);color:var(--red);background:#fffaf0}.book-cover-inner .cover-switch{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.book-cover-inner .cover-switch a{color:#776f64;font-size:.72rem;text-decoration:none;border-bottom:1px solid #b7a78d;padding-bottom:2px}
 </style>
-<link rel="stylesheet" href="assets/home-cover.css?v=5" />
+<link rel="stylesheet" href="assets/home-cover.css?v=6" />
 </head>
 <body class="auth-pending">
   <main class="shell">
@@ -200,6 +200,10 @@
 
   <div class="book-cover" id="bookCover" aria-label="盈 · 网站首页封面">
     <canvas id="coverParticles" aria-hidden="true"></canvas>
+    <div class="cover-meteor-field" aria-hidden="true">
+      <span class="cover-meteor"></span><span class="cover-meteor"></span><span class="cover-meteor"></span>
+      <span class="cover-meteor"></span><span class="cover-meteor"></span>
+    </div>
     <div class="cover-pointer-glow" id="coverPointerGlow" aria-hidden="true"></div>
     <section class="book-cover-inner">
       <div class="cover-content">

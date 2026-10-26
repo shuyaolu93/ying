@@ -112,6 +112,7 @@ test('new visitor sees the login page before content', async t => {
   assert.equal(await page.locator('.cover-mobile-intro').isVisible(), true);
   assert.equal(await page.locator('#coverAuthForm').isVisible(), true);
   assert.equal(await page.locator('#coverParticles').isVisible(), false);
+  assert.equal(await page.locator('.cover-meteor-field').isVisible(), false);
   assert.equal(await page.locator('.shell').isVisible(), false);
   assert.equal(await page.locator('body').getAttribute('class').then(s => s.includes('auth-gated')), true);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -130,6 +131,8 @@ test('homepage cover opens and closes the login form', async t => {
 test('homepage particles respond to pointer movement', async t => {
   const { page } = await openPage(t, { viewport: { width: 820, height: 1024 } });
   await page.locator('#bookCover').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('.cover-meteor-field').isVisible(), true);
+  assert.notEqual(await page.locator('.cover-meteor').first().evaluate(node => getComputedStyle(node).animationName), 'none');
   await page.mouse.move(110, 320);
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('#coverPointerGlow')).opacity) > .8);
   assert.equal(await page.locator('#coverEnter').isVisible(), true);
