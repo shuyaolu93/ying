@@ -19,7 +19,7 @@ after(async () => { if (browser) await browser.close(); });
 async function openPage(t, options = {}) {
   const context = await browser.newContext({ viewport: options.viewport || { width: 390, height: 844 } });
   t.after(() => context.close());
-  if (options.token) await context.addInitScript(token => localStorage.setItem('rongheAuthTokenV1', token), options.token);
+  if (options.token) await context.addInitScript(token => sessionStorage.setItem('rongheAuthTokenV1', token), options.token);
   if (options.readingData) await context.addInitScript(data => localStorage.setItem('ying-candle-reading-v1-account-1', JSON.stringify(data)), options.readingData);
   if (options.legacyMarketDraft) await context.addInitScript(data => localStorage.setItem('tradeDecisionCardDraftV3:account-1', JSON.stringify(data)), options.legacyMarketDraft);
   if (options.legacyMarketHistory) await context.addInitScript(data => localStorage.setItem('tradeDecisionCardSnapshotsV2:account-1', JSON.stringify(data)), options.legacyMarketHistory);
@@ -43,6 +43,7 @@ async function openPage(t, options = {}) {
   let user = options.token === 'valid-token'
     ? { id: 1, email: options.owner ? '1234567890' : 'reader@example.test', active: true, entitlementUntil: '2099-01-01T00:00:00Z', canViewMessages: Boolean(options.owner) }
     : null;
+  let challengePresented = false;
   const marketNotes = new Map();
   await page.route('https://ronghe-risk-free.shuyaolu93.workers.dev/**', async route => {
     const pathname = new URL(route.request().url()).pathname;
@@ -57,9 +58,15 @@ async function openPage(t, options = {}) {
       }
       else data = { user };
     } else if (pathname === '/api/auth/login' || pathname === '/api/auth/register') {
-      const email = route.request().postDataJSON().email;
-      user = { id: 2, email, active: false, entitlementUntil: null, canViewMessages: false };
-      data = { user, token: 'new-token' };
+      const submitted = route.request().postDataJSON();
+      if (pathname === '/api/auth/login' && options.challengeLogin && !challengePresented) {
+        challengePresented = true;
+        status = 429; data = { error: 'challenge_required', message: '请完成人机验证' };
+      } else {
+        if (options.challengeLogin) assert.equal(submitted.turnstileToken, 'fresh-test-token');
+        user = { id: 2, email: submitted.email, active: false, entitlementUntil: null, canViewMessages: false };
+        data = { user, token: 'new-token' };
+      }
     } else if (pathname === '/api/auth/redeem') {
       user = { ...user, active: true, entitlementUntil: '2099-01-01T00:00:00Z' };
       data = { user };
@@ -97,6 +104,10 @@ async function openPage(t, options = {}) {
       headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' },
       body: JSON.stringify(data) });
   });
+  if (options.challengeLogin) await page.route('https://challenges.cloudflare.com/**', route => route.fulfill({
+    contentType: 'application/javascript',
+    body: "window.turnstile={render:function(node,options){var b=document.createElement('button');b.type='button';b.textContent='完成验证';b.onclick=function(){options.callback('fresh-test-token')};node.append(b);return 1},remove:function(){},reset:function(){}}"
+  }));
   await page.route('https://ying-candle-data.shuyaolu93.workers.dev/**', route => route.fulfill({
     contentType: 'application/json',
     headers: { 'access-control-allow-origin': 'https://ying.test' },
@@ -257,7 +268,7 @@ test('market update can be interpreted with evidence and is cleared between acco
   await page.locator('#coverEmail').fill('new-reader@example.test');
   await page.locator('#coverPassword').fill('password123');
   await page.locator('#coverAuthForm button[type="submit"]').click();
-  await page.waitForFunction(() => localStorage.getItem('rongheAuthTokenV1') === 'new-token');
+  await page.waitForFunction(() => sessionStorage.getItem('rongheAuthTokenV1') === 'new-token');
   await page.locator('#coverCode').fill('TEST-CODE');
   await page.locator('#coverRedeem').click();
   await page.locator('.shell').waitFor({ state: 'visible' });
@@ -334,6 +345,7 @@ test('old market draft is carried into the new page and old link redirects', asy
   assert.equal(await page.locator('[name="hotspotPath"][value="demand"]').isChecked(), true);
   await page.goto('https://ying.test/#marketHotspots');
   await page.waitForURL('https://ying.test/market.html');
+  await page.locator('.shell').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#hotspotTitle').inputValue(), '旧热点记录');
 });
 
@@ -360,7 +372,7 @@ test('market page does not reveal the prior account if login changes during clou
   for (let attempt = 0; attempt < 60 && !calls.includes('/api/market/notes'); attempt += 1) await new Promise(resolve => setTimeout(resolve, 10));
   assert.equal(calls.includes('/api/market/notes'), true);
   await page.evaluate(() => {
-    localStorage.removeItem('rongheAuthTokenV1');
+    sessionStorage.removeItem('rongheAuthTokenV1');
     window.dispatchEvent(new StorageEvent('storage', { key: 'rongheAuthTokenV1', oldValue: 'valid-token', newValue: null }));
   });
   await page.waitForTimeout(600);
@@ -373,7 +385,8 @@ test('login, redeem, personal center and logout remain usable', async t => {
   await page.fill('#coverEmail', '12345678');
   await page.fill('#coverPassword', 'password123');
   await page.locator('#coverAuthForm button[type="submit"]').click();
-  await page.waitForFunction(() => localStorage.getItem('rongheAuthTokenV1') === 'new-token');
+  await page.waitForFunction(() => sessionStorage.getItem('rongheAuthTokenV1') === 'new-token');
+  assert.equal(await page.evaluate(() => localStorage.getItem('rongheAuthTokenV1')), null);
   assert.equal(await page.locator('#bookCover').isVisible(), true);
   assert.equal(await page.locator('#authModal').isVisible(), false);
   await page.fill('#coverCode', 'RONGHE-TEST');
@@ -390,6 +403,16 @@ test('login, redeem, personal center and logout remain usable', async t => {
   await page.click('#headerLogout');
   assert.equal(await page.locator('#bookCover').isVisible(), true);
   assert.equal(await page.locator('.shell').isVisible(), false);
+});
+
+test('rate-limited login asks for a challenge and then continues', async t => {
+  const { page } = await openPage(t, { challengeLogin: true });
+  await page.fill('#coverEmail', '12345678');
+  await page.fill('#coverPassword', 'password123');
+  await page.locator('#coverAuthForm button[type="submit"]').click();
+  await page.getByRole('dialog', { name: '登录安全验证' }).getByRole('button', { name: '完成验证' }).click();
+  await page.waitForFunction(() => sessionStorage.getItem('rongheAuthTokenV1') === 'new-token');
+  assert.equal(await page.getByRole('dialog', { name: '登录安全验证' }).count(), 0);
 });
 
 test('owner message list displays account names as text', async t => {

@@ -5,13 +5,28 @@
   var mobileCoverQuery = window.matchMedia('(max-width: 700px), (max-height: 500px) and (pointer: coarse)');
   var user = null;
   var token = '';
-  try { token = localStorage.getItem(tokenKey) || ''; } catch (error) {}
+  try {
+    token = sessionStorage.getItem(tokenKey) || localStorage.getItem(tokenKey) || '';
+    if (token) sessionStorage.setItem(tokenKey, token);
+    localStorage.removeItem(tokenKey);
+  } catch (error) {}
   var authEpoch = 0;
   function request(path, options) {
     var sentToken = token;
     options = options || {}; options.headers = Object.assign({ 'content-type': 'application/json' }, options.headers || {});
     if (token) options.headers.authorization = 'Bearer ' + token;
-    return fetch(API + path, options).then(function (response) { return response.json().then(function (data) { if (sentToken !== token) { var stale = new Error('账户已切换'); stale.stale = true; throw stale; } if (!response.ok) throw new Error(data.message || data.error || '请求失败'); return data; }); });
+    return fetch(API + path, options).then(function (response) { return response.json().then(function (data) { if (sentToken !== token) { var stale = new Error('账户已切换'); stale.stale = true; throw stale; } if (!response.ok) { var error = new Error(data.message || data.error || '请求失败'); error.code = data.error; throw error; } return data; }); });
+  }
+  function login(email, password, onSuccess, onError) {
+    function attempt(turnstileToken) {
+      request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: email, password: password, turnstileToken: turnstileToken || '' }) })
+        .then(onSuccess).catch(function (error) {
+          if (error.code === 'challenge_required' || error.code === 'challenge_failed') {
+            window.YingLoginChallenge().then(attempt).catch(onError);
+          } else onError(error);
+        });
+    }
+    attempt();
   }
   function show(message, good) { var note = document.getElementById('authNote'); if (!note) return; note.textContent = message; note.className = 'auth-note ' + (good ? 'good' : 'bad'); }
   function coverMessage(message, good) { var note = document.getElementById('coverNote'); if (!note) return; note.textContent = message || ''; note.style.color = mobileCoverQuery.matches ? (good ? '#2f7d5c' : '#b63b2b') : (good ? '#8de3c6' : '#ff9f9b'); }
@@ -78,14 +93,14 @@
   function save(data, initialLoad) {
     var sameAccount = active() && data.user && data.user.active && new Date(data.user.entitlementUntil).getTime() > Date.now() && user.id === data.user.id;
     token = data.token || token; user = data.user || user;
-    try { if (token) localStorage.setItem(tokenKey, token); } catch (error) { show('浏览器存储不可用，本次登录仅在当前会话有效'); }
+    try { if (token) sessionStorage.setItem(tokenKey, token); } catch (error) { show('浏览器存储不可用，本次登录仅在当前页面有效'); }
     if (sameAccount) { render(); renderProfile(); return Promise.resolve(); }
     return syncAccount(initialLoad);
   }
   function clear(error) {
     if (error && error.stale) return;
     authEpoch += 1; token = ''; user = null;
-    try { localStorage.removeItem(tokenKey); } catch (error) {}
+    try { sessionStorage.removeItem(tokenKey); localStorage.removeItem(tokenKey); } catch (error) {}
     if (window.RongheDesk) window.RongheDesk.setAccount(null);
     close(); render(); showCover();
   }
@@ -111,7 +126,7 @@
     document.body.appendChild(overlay);
     document.getElementById('accountButton').addEventListener('click', open); document.getElementById('authClose').addEventListener('click', close);
     overlay.addEventListener('click', function (event) { if (event.target === overlay) close(); });
-    document.getElementById('authLogin').addEventListener('click', function () { request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: document.getElementById('authEmail').value, password: document.getElementById('authPassword').value }) }).then(function (data) { save(data); show('登录成功', true); }).catch(function (error) { show(error.message); }); });
+    document.getElementById('authLogin').addEventListener('click', function () { login(document.getElementById('authEmail').value, document.getElementById('authPassword').value, function (data) { save(data); show('登录成功', true); }, function (error) { show(error.message); }); });
     document.getElementById('authRegister').addEventListener('click', function () { request('/api/auth/register', { method: 'POST', body: JSON.stringify({ email: document.getElementById('authEmail').value, password: document.getElementById('authPassword').value }) }).then(function (data) { save(data); show('注册成功，请兑换卡密', true); }).catch(function (error) { show(error.message); }); });
     document.getElementById('authRedeem').addEventListener('click', function () { if (!token) return show('请先登录'); request('/api/auth/redeem', { method: 'POST', body: JSON.stringify({ code: document.getElementById('authCode').value.trim() }) }).then(function (data) { return save(data).then(function () { var until = data.user && data.user.entitlementUntil ? String(data.user.entitlementUntil).slice(0, 10) : '未知'; show('兑换成功，有效期至 ' + until, true); }); }).catch(function (error) { show(error.message); }); });
     document.getElementById('authLogout').addEventListener('click', logout);
@@ -135,7 +150,7 @@
     if (coverForm) coverForm.addEventListener('submit', function (event) {
       event.preventDefault();
       coverMessage('正在验证…');
-      request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: coverEmail.value, password: coverPassword.value }) }).then(function (data) { save(data); }).catch(function (error) { coverMessage(error.message); });
+      login(coverEmail.value, coverPassword.value, function (data) { save(data); }, function (error) { coverMessage(error.message); });
     });
     if (document.getElementById('coverRegister')) document.getElementById('coverRegister').addEventListener('click', function () {
       coverMessage('正在创建账户…');

@@ -3,6 +3,10 @@
   "name": "ronghe-risk-free",
   "main": "free-worker.js",
   "compatibility_date": "2026-10-18",
+  "ratelimits": [
+    { "name": "AUTH_IP_RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } },
+    { "name": "AUTH_ACCOUNT_RATE_LIMITER", "namespace_id": "1002", "simple": { "limit": 8, "period": 60 } }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

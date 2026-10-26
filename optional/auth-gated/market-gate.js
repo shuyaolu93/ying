@@ -6,7 +6,11 @@
   var checking = false;
   var active = false;
   var authEpoch = 0;
-  try { token = localStorage.getItem('rongheAuthTokenV1') || ''; } catch (_) {}
+  try {
+    token = sessionStorage.getItem('rongheAuthTokenV1') || localStorage.getItem('rongheAuthTokenV1') || '';
+    if (token) sessionStorage.setItem('rongheAuthTokenV1', token);
+    localStorage.removeItem('rongheAuthTokenV1');
+  } catch (_) {}
 
   window.RongheAuth = { getToken: function () { return token; }, isActive: function () { return active; } };
 

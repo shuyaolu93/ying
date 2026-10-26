@@ -162,7 +162,7 @@ function requestToken(request) {
 async function createSession(db, user) {
   const token = randomToken();
   const tokenHash = await sha256(token);
-  const expires = new Date(Date.now() + 30 * 86400000).toISOString();
+  const expires = new Date(Date.now() + 12 * 3600000).toISOString();
   await db.prepare("INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?, ?, ?)").bind(user.id, tokenHash, expires).run();
   return { token, expiresAt: expires };
 }
@@ -176,6 +176,51 @@ function visitorIp(request) {
     try { return new URL("http://[" + value + "]/").hostname.slice(1, -1); } catch (_) {}
   }
   return null;
+}
+async function verifyLoginChallenge(request, env, token) {
+  if (!env.TURNSTILE_SECRET || typeof token !== "string" || !token || token.length > 2048) return false;
+  try {
+    const body = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token });
+    const ip = visitorIp(request); if (ip) body.set("remoteip", ip);
+    const response = await (env.TURNSTILE_VERIFY || fetch)("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+      body, signal: AbortSignal.timeout(10000)
+    });
+    if (!response.ok) return false;
+    const result = await response.json();
+    return result.success === true && result.action === "login" &&
+      (result.hostname === "www.zunshoujilv.top" || result.hostname === "zunshoujilv.top");
+  } catch (error) {
+    console.error("login_challenge_verification_failed", error);
+    return false;
+  }
+}
+async function limitAccountAction(request, env, action, account, challengeToken) {
+  if (!env.AUTH_IP_RATE_LIMITER || !env.AUTH_ACCOUNT_RATE_LIMITER) {
+    return json({ error: "rate_limit_unavailable", message: "服务暂时不可用，请稍后重试" }, 503);
+  }
+  try {
+    const ip = visitorIp(request) || "unknown";
+    const accountKey = await sha256(String(account || "").trim().toLowerCase());
+    const [ipLimit, accountLimit] = await Promise.all([
+      env.AUTH_IP_RATE_LIMITER.limit({ key: action + ":" + ip }),
+      env.AUTH_ACCOUNT_RATE_LIMITER.limit({ key: action + ":" + accountKey })
+    ]);
+    if (!ipLimit.success || !accountLimit.success) {
+      if (action === "login") {
+        if (challengeToken) {
+          if (await verifyLoginChallenge(request, env, challengeToken)) return null;
+          return json({ error: "challenge_failed", message: "验证未通过，请重新验证" }, 403);
+        }
+        return json({ error: "challenge_required", message: "尝试次数较多，请完成人机验证" }, 429);
+      }
+      return json({ error: "rate_limited", message: "操作过于频繁，请稍后重试" }, 429);
+    }
+    return null;
+  } catch (error) {
+    console.error("auth_rate_limit_failed", error);
+    return json({ error: "rate_limit_unavailable", message: "服务暂时不可用，请稍后重试" }, 503);
+  }
 }
 async function recordLogin(db, userId, eventType, request) {
   try {
@@ -250,6 +295,7 @@ export default {
     if (url.pathname === "/api/auth/register" && request.method === "POST") {
       try {
         const body = await request.json(); const email = String(body.email || "").trim().toLowerCase(); const password = String(body.password || "");
+        const limited = await limitAccountAction(request, env, "register", email); if (limited) return limited;
         if (!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || /^\d{8,}$/.test(email))) return json({ error: "invalid_account", message: "账号需为有效邮箱或 8 位以上数字" }, 400);
         if (password.length < 8) return json({ error: "weak_password", message: "密码至少 8 位" }, 400);
         if (await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first()) return json({ error: "email_exists", message: "该账号已注册，请直接登录" }, 409);
@@ -263,6 +309,7 @@ export default {
     if (url.pathname === "/api/auth/login" && request.method === "POST") {
       try {
         const body = await request.json(); const email = String(body.email || "").trim().toLowerCase(); const password = String(body.password || "");
+        const limited = await limitAccountAction(request, env, "login", email, body.turnstileToken); if (limited) return limited;
         const user = await env.DB.prepare("SELECT id, email, password_hash, password_salt, entitlement_until FROM users WHERE email = ?").bind(email).first();
         if (!user || (await passwordHash(password, user.password_salt)) !== user.password_hash) return json({ error: "invalid_credentials", message: "账号或密码不正确" }, 401);
         const session = await createSession(env.DB, user); await recordLogin(env.DB, user.id, "login", request);
@@ -436,6 +483,7 @@ export default {
     }
     if (url.pathname === "/api/auth/redeem" && request.method === "POST") {
       const user = await authenticatedUser(request, env.DB); if (!user) return authRequired(user);
+      const limited = await limitAccountAction(request, env, "redeem", user.id); if (limited) return limited;
       try {
         const body = await request.json(); const code = String(body.code || "").trim().toUpperCase(); if (!code) return json({ error: "code_required", message: "请输入卡密" }, 400);
         const codeHash = await sha256(code); const activation = await env.DB.prepare("SELECT * FROM activation_codes WHERE code_hash = ?").bind(codeHash).first();

@@ -42,6 +42,11 @@ function session(overrides = {}) {
 
 async function call(pathname, options, env) {
   const worker = await workerPromise;
+  env = {
+    AUTH_IP_RATE_LIMITER: { limit: async () => ({ success: true }) },
+    AUTH_ACCOUNT_RATE_LIMITER: { limit: async () => ({ success: true }) },
+    ...env
+  };
   const request = new Request('https://worker.test' + pathname, {
     ...options,
     headers: { authorization: 'Bearer test-token', 'content-type': 'application/json', ...(options.headers || {}) }
@@ -49,6 +54,41 @@ async function call(pathname, options, env) {
   const response = await worker.fetch(request, env);
   return { status: response.status, data: await response.json() };
 }
+
+test('account actions stop when either rate limit is exceeded or missing', async () => {
+  const db = fakeDB(null);
+  const body = JSON.stringify({ email: '1234567890', password: 'password123' });
+  const limited = await call('/api/auth/login', { method: 'POST', body }, {
+    DB: db,
+    AUTH_ACCOUNT_RATE_LIMITER: { limit: async () => ({ success: false }) }
+  });
+  assert.equal(limited.status, 429);
+  assert.equal(limited.data.error, 'challenge_required');
+  const challenged = await call('/api/auth/login', {
+    method: 'POST', body: JSON.stringify({ email: '1234567890', password: 'password123', turnstileToken: 'fresh-token' })
+  }, {
+    DB: db,
+    AUTH_ACCOUNT_RATE_LIMITER: { limit: async () => ({ success: false }) },
+    TURNSTILE_SECRET: 'test-secret',
+    TURNSTILE_VERIFY: async () => new Response(JSON.stringify({ success: true, action: 'login', hostname: 'www.zunshoujilv.top' }))
+  });
+  assert.equal(challenged.status, 401);
+  const rejectedChallenge = await call('/api/auth/login', {
+    method: 'POST', body: JSON.stringify({ email: '1234567890', password: 'password123', turnstileToken: 'replayed-token' })
+  }, {
+    DB: db,
+    AUTH_ACCOUNT_RATE_LIMITER: { limit: async () => ({ success: false }) },
+    TURNSTILE_SECRET: 'test-secret',
+    TURNSTILE_VERIFY: async () => new Response(JSON.stringify({ success: false, action: 'login', hostname: 'www.zunshoujilv.top' }))
+  });
+  assert.equal(rejectedChallenge.status, 403);
+  const unavailable = await call('/api/auth/register', { method: 'POST', body }, {
+    DB: db,
+    AUTH_IP_RATE_LIMITER: null
+  });
+  assert.equal(unavailable.status, 503);
+  assert.equal(db.queries.length, 0);
+});
 
 test('expired ISO session is rejected even within its UTC calendar day', async () => {
   const db = fakeDB(session({ session_expires_at: new Date(Date.now() - 1000).toISOString() }));

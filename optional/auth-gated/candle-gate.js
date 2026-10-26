@@ -5,7 +5,11 @@
   var blocked = false;
   var checking = false;
   var interval = null;
-  try { token = localStorage.getItem('rongheAuthTokenV1') || ''; } catch (error) {}
+  try {
+    token = sessionStorage.getItem('rongheAuthTokenV1') || localStorage.getItem('rongheAuthTokenV1') || '';
+    if (token) sessionStorage.setItem('rongheAuthTokenV1', token);
+    localStorage.removeItem('rongheAuthTokenV1');
+  } catch (error) {}
 
   function block(message) {
     if (blocked) return;

@@ -29,7 +29,7 @@ test('only the administrator can open the dashboard, read safe records and gener
   await page.route('https://ying.test/**', async route => {
     const pathname = new URL(route.request().url()).pathname;
     const file = pathname === '/' ? 'index.html' : pathname.slice(1);
-    await route.fulfill({ contentType: file.endsWith('.js') ? 'application/javascript' : 'text/html', body: await fs.readFile(path.join(root, file)) });
+    await route.fulfill({ contentType: file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html', body: await fs.readFile(path.join(root, file)) });
   });
   await page.route('https://ronghe-risk-free.shuyaolu93.workers.dev/**', async route => {
     const url = new URL(route.request().url());

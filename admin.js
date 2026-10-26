@@ -5,7 +5,11 @@
   const $ = id => document.getElementById(id);
   const offsets = Object.create(null);
   let token = '';
-  try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch (_) {}
+  try {
+    token = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || '';
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    localStorage.removeItem(TOKEN_KEY);
+  } catch (_) {}
 
   async function request(path, options = {}) {
     const headers = { ...(options.body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: 'Bearer ' + token } : {}) };
@@ -145,15 +149,23 @@
     const notice = $('loginNotice'); notice.textContent = '正在验证管理账号…';
     const button = event.submitter; button.disabled = true;
     try {
-      const response = await fetch(API + '/api/auth/login', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: $('account').value.trim(), password: $('password').value })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '登录失败');
+      let data, challengeToken = '';
+      for (;;) {
+        const response = await fetch(API + '/api/auth/login', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email: $('account').value.trim(), password: $('password').value, turnstileToken: challengeToken })
+        });
+        data = await response.json();
+        if (response.ok) break;
+        if (data.error === 'challenge_required' || data.error === 'challenge_failed') {
+          challengeToken = await window.YingLoginChallenge();
+          continue;
+        }
+        throw new Error(data.message || '登录失败');
+      }
       if (!data.user?.canViewMessages) throw new Error('此账号没有管理权限');
       token = data.token;
-      localStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.setItem(TOKEN_KEY, token);
       $('password').value = '';
       notice.textContent = '';
       await openDashboard(data.user);
@@ -186,7 +198,7 @@
 
   $('logout').addEventListener('click', async () => {
     try { await request('/api/auth/logout', { method: 'POST' }); } catch (_) {}
-    token = ''; try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+    token = ''; try { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); } catch (_) {}
     showLogin('已退出管理账号。');
   });
 
