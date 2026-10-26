@@ -43,3 +43,7 @@ test('rejects invalid prices instead of guessing', function () {
 test('stress test is read-only and deterministic', function () {
   assert.deepEqual(risk.stressTest({ equity: 10000, positions: [{ quantity: 10, price: 100 }] }, -0.2), { equityBefore: 10000, exposure: 1000, estimatedLoss: 200, equityAfter: 9800 });
 });
+
+test('stress test shows a deficit when leveraged losses exceed equity', function () {
+  assert.deepEqual(risk.stressTest({ equity: 1000, positions: [{ quantity: 100, price: 100 }] }, -0.2), { equityBefore: 1000, exposure: 10000, estimatedLoss: 2000, equityAfter: -1000 });
+});

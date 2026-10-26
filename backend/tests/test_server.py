@@ -11,6 +11,14 @@ def test_quality_blocks_empty_bars():
     assert report["block_new_entries"] is True
 
 
+def test_quality_blocks_nonfinite_and_out_of_range_ohlc():
+    bars = [{"open": 10, "high": 12, "low": 9, "close": 11, "volume": 100} for _ in range(60)]
+    bars[30] = {"open": 13, "high": 12, "low": 9, "close": 11, "volume": 100}
+    assert quality_report(bars)["block_new_entries"] is True
+    bars[30] = {"open": 10, "high": 12, "low": 9, "close": 11, "volume": float("nan")}
+    assert quality_report(bars)["block_new_entries"] is True
+
+
 def test_risk_check_resizes_large_order():
     result = risk_check({"symbol": "TEST", "side": "buy", "quantity": 1000, "price": 20, "equity": 100000})
     assert result["decision"] == "resize"

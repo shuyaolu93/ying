@@ -117,6 +117,43 @@ test('returning from the candle page never flashes the login cover for a valid s
   assert.equal(await page.locator('body').getAttribute('class').then(s => s.includes('auth-gated')), false);
 });
 
+test('valuation requires real inputs and hold or sell summaries do not require a buy stop', async t => {
+  const { page } = await openPage(t, { token: 'valid-token' });
+  await page.locator('.shell').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#calcInput0').inputValue(), '');
+  assert.equal(await page.locator('#singlePositionInput').inputValue(), '');
+  assert.equal(await page.locator('#leverageInput').inputValue(), '');
+  await page.locator('#calculateValuation').click();
+  assert.match(await page.locator('#valuationError').textContent(), /请检查输入范围/);
+  const today = await page.evaluate(() => {
+    const date = new Date();
+    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+  });
+  for (const id of ['dataDate', 'pmiDate', 'creditDate', 'yieldDate']) await page.locator('#' + id).fill(today);
+  await page.locator('#dataSource').fill('国家统计局与公开债券数据');
+  for (const [id, value] of Object.entries({ pmiInput: '51', pmiPrev: '50', socialInput: '8', socialPrev: '7', m2Input: '8', m2Prev: '7', yieldInput: '1.8', yieldPrev: '1.9', calcInput0: '20', calcInput1: '1.2', calcInput2: '9', calcInput3: '3' })) {
+    await page.locator('#' + id).fill(value);
+  }
+  await page.locator('#calculateValuation').click();
+  await page.locator('#singlePositionInput').fill('10');
+  await page.locator('#leverageInput').fill('0');
+  assert.match(await page.locator('#riskValidation').textContent(), /止损或逻辑失效条件/);
+  await page.locator('#stageHold').check();
+  assert.equal(await page.locator('#phaseBuyStop').isChecked(), false);
+  assert.match(await page.locator('#riskValidation').textContent(), /风险校验通过/);
+  await page.locator('#singlePositionInput').fill('30');
+  assert.match(await page.locator('#riskValidation').textContent(), /单票仓位需 ≤ 15%/);
+  await page.locator('#singlePositionInput').fill('10');
+  await page.locator('#generateSummary').click();
+  assert.match(await page.locator('#summaryOutput').inputValue(), /持有逻辑复核：/);
+  await page.locator('#stageSell').check();
+  await page.locator('#singlePositionInput').fill('30');
+  await page.locator('#leverageInput').fill('40');
+  assert.match(await page.locator('#riskValidation').textContent(), /卖出复核可继续/);
+  await page.locator('#generateSummary').click();
+  assert.match(await page.locator('#summaryOutput').inputValue(), /卖出证伪条件：/);
+});
+
 test('login, redeem, personal center and logout remain usable', async t => {
   const { page, calls } = await openPage(t);
   await page.fill('#coverEmail', '12345678');

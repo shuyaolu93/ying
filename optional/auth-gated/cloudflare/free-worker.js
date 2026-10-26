@@ -53,10 +53,26 @@ function qualityReport(bars) {
   const issues = [];
   const warnings = [];
   const required = ["open", "high", "low", "close", "volume"];
+  if (!Array.isArray(bars)) issues.push("K线数据格式无效");
   if (!rows.length) issues.push("K线数据为空");
-  if (rows.length && required.some((field) => !(field in rows[0]))) issues.push("缺少必要K线字段");
+  if (rows.length > 5000) issues.push("K线数据超过 5000 条上限");
   if (rows.length && rows.length < 20) issues.push(`K线样本不足：仅${rows.length}条`);
   else if (rows.length && rows.length < 60) warnings.push(`K线样本偏少：${rows.length}条`);
+  for (let index = 0; index < Math.min(rows.length, 5000) && issues.length < 8; index += 1) {
+    const bar = rows[index];
+    if (!bar || typeof bar !== "object" || Array.isArray(bar) || required.some(field => bar[field] === undefined || bar[field] === null || String(bar[field]).trim() === "")) {
+      issues.push(`第${index + 1}条缺少必要K线字段`);
+      continue;
+    }
+    const [open, high, low, close, volume] = required.map(field => Number(bar[field]));
+    if (![open, high, low, close, volume].every(Number.isFinite) || Math.min(open, high, low, close) <= 0 || volume < 0) {
+      issues.push(`第${index + 1}条价格或成交量无效`);
+    } else if (high < Math.max(open, close, low) || low > Math.min(open, close, high)) {
+      issues.push(`第${index + 1}条 OHLC 关系异常`);
+    } else if (volume === 0 && !warnings.includes("存在零成交量K线")) {
+      warnings.push("存在零成交量K线");
+    }
+  }
   const score = Math.max(0, 100 - issues.length * 35 - warnings.length * 8);
   return { score, status: issues.length || score < 50 ? "blocked" : score < 85 ? "watch" : "ok", block_new_entries: Boolean(issues.length || score < 50), issues, warnings };
 }

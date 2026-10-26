@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -63,11 +64,11 @@ def quality_report(bars: list[dict[str, Any]]) -> dict[str, Any]:
         try:
             high, low, close, opening = (float(bar[k]) for k in ("high", "low", "close", "open"))
             volume = float(bar["volume"])
-            if min(high, low, close, opening) <= 0:
-                issues.append(f"第{index + 1}条存在非正价格")
-            if high < low or close > high * 1.001 or close < low * 0.999:
+            if not all(math.isfinite(value) for value in (high, low, close, opening, volume)) or min(high, low, close, opening) <= 0 or volume < 0:
+                issues.append(f"第{index + 1}条价格或成交量无效")
+            elif high < max(opening, close, low) or low > min(opening, close, high):
                 issues.append(f"第{index + 1}条 OHLC 关系异常")
-            if volume <= 0:
+            if volume == 0:
                 warnings.append(f"第{index + 1}条成交量为空或为0")
             closes.append(close)
         except (KeyError, TypeError, ValueError):

@@ -4,7 +4,7 @@
   var $ = function (selector) { return document.querySelector(selector); };
   var $$ = function (selector) { return document.querySelectorAll(selector); };
   var state = { x: 0, y: 0, quadrant: '宏观坐标原点', macroValid: true, macroContributions: { pmi: 0, social: 0, m2: 0, yield: 0 }, posture: '均衡姿态', confidence: '低置信', rationaleScore: 0, rationaleSupport: [], rationaleCounter: [], allocationType: 'balance', allocationValues: [45, 25, 10, 20], triggerLabels: [], valuationType: 'stable', valuationCalculated: false, valuationZone: '等待计算', valuationRange: '', scenarioValues: [], phaseDecision: '暂不建议买入', phaseReady: false, behaviorLevel: '未完成', behaviorReady: false, behaviorBlocked: false, viewMode: 'full', lastDataChangeAt: '', lastCalculatedAt: '', summaryGenerated: false, activeRole: 1, undoSnapshot: null, history: [], carryover: 0 };
-  var APP_VERSION = '2.6.3-free';
+  var APP_VERSION = '2.6.4-free';
   var RULE_VERSION = 'R2.4';
   var FORMULA_VERSION = 'F1.3';
   state.safetyMargin = null;
@@ -329,9 +329,9 @@
 
   var valuationMap = {
     stable: { tool: 'DDM 股息折现', guide: '适用于分红稳定、现金流可预测的企业。', formula: '合理价值 = 下一年度每股股息 ÷（股权成本 − 永续增长率）', labels: ['当前股价', '下一年度每股股息', '股权成本%', '永续增长率%'], values: [20, 1.2, 9, 3], steps: ['0.01', '0.01', '0.1', '0.1'], mins: [0, 0.01, 0.1, 0], maxs: [100000, 100000, 100, 50] },
-    resource: { tool: 'PB–ROE 分位模型', guide: '适用于周期与资源股，用历史 PB 中位数和 ROE 分位修正合理 PB。', formula: '合理PB = 历史PB中位数 ×（0.7 + 0.6 × ROE分位）；PB分位用于二次校验', labels: ['当前PB', '历史PB中位数', 'ROE分位%', '当前PB分位%'], values: [1.4, 1.5, 55, 48], steps: ['0.01', '0.01', '1', '1'], mins: [0, 0.01, 0, 0], maxs: [100, 100, 100, 100] },
-    growth: { tool: 'PEG 成长估值', guide: '适用于盈利成长股，用盈利增速和目标 PEG 推导合理 PE 与合理股价。', formula: '合理PE = 预期利润增速 × 目标PEG；合理股价 = 每股收益 × 合理PE', labels: ['当前股价', '每股收益EPS', '预期利润增速%', '目标PEG'], values: [38, 1.5, 22, 1], steps: ['0.01', '0.01', '0.1', '0.1'], mins: [0, 0.01, 0.1, 0.1], maxs: [100000, 10000, 500, 10] },
-    preprofit: { tool: 'PS 分位修正', guide: '适用于未盈利成长企业，以行业 PS 中位数和毛利率、收入增速分位修正。', formula: '合理PS = 行业PS中位数 × [0.6 + 0.8 ×（毛利率分位 + 收入增速分位）÷ 200]', labels: ['当前PS', '行业PS中位数', '毛利率分位%', '收入增速分位%'], values: [5.2, 4.5, 65, 72], steps: ['0.01', '0.01', '1', '1'], mins: [0, 0.01, 0, 0], maxs: [100, 100, 100, 100] }
+    resource: { tool: 'PB–ROE 分位模型', guide: '适用于周期与资源股；修正系数是本站研究假设，需结合资本成本和同业数据复核。', formula: '合理PB = 历史PB中位数 ×（0.7 + 0.6 × ROE分位）；PB分位用于二次校验', labels: ['当前PB', '历史PB中位数', 'ROE分位%', '当前PB分位%'], values: [1.4, 1.5, 55, 48], steps: ['0.01', '0.01', '1', '1'], mins: [0, 0.01, 0, 0], maxs: [100, 100, 100, 100] },
+    growth: { tool: 'PEG 成长估值', guide: '适用于盈利成长股；目标 PEG 需结合风险、分红和增长质量判断，结果仅作相对估值参考。', formula: '合理PE = 预期利润增速 × 目标PEG；合理股价 = 每股收益 × 合理PE', labels: ['当前股价', '每股收益EPS', '预期利润增速%', '目标PEG'], values: [38, 1.5, 22, 1], steps: ['0.01', '0.01', '0.1', '0.1'], mins: [0, 0.01, 0.1, 0.1], maxs: [100000, 10000, 500, 10] },
+    preprofit: { tool: 'PS 分位修正', guide: '适用于未盈利成长企业；修正系数是本站研究假设，需结合利润率、现金消耗和融资风险复核。', formula: '合理PS = 行业PS中位数 × [0.6 + 0.8 ×（毛利率分位 + 收入增速分位）÷ 200]', labels: ['当前PS', '行业PS中位数', '毛利率分位%', '收入增速分位%'], values: [5.2, 4.5, 65, 72], steps: ['0.01', '0.01', '1', '1'], mins: [0, 0.01, 0, 0], maxs: [100, 100, 100, 100] }
   };
 
   function updateValuation(event) {
@@ -351,7 +351,7 @@
     var i;
     for (i = 0; i < 4; i += 1) {
       if (exists('#calcLabel' + i)) $('#calcLabel' + i).textContent = config.labels[i];
-      if (exists('#calcInput' + i)) { $('#calcInput' + i).value = String(config.values[i]); $('#calcInput' + i).step = config.steps[i]; $('#calcInput' + i).min = String(config.mins[i]); $('#calcInput' + i).max = String(config.maxs[i]); }
+      if (exists('#calcInput' + i)) { $('#calcInput' + i).value = ''; $('#calcInput' + i).placeholder = '例如 ' + config.values[i]; $('#calcInput' + i).step = config.steps[i]; $('#calcInput' + i).min = String(config.mins[i]); $('#calcInput' + i).max = String(config.maxs[i]); }
     }
     if (exists('#valuationZone')) { $('#valuationZone').className = 'valuation-zone fair'; $('#valuationZone').textContent = '等待计算'; }
     if (exists('#valuationDetail')) $('#valuationDetail').textContent = '请核对输入数据后点击“计算合理估值”。';
@@ -736,21 +736,23 @@
   }
 
   function validateRisk() {
+    var selectedStage = $('[name="tradeStage"]:checked');
+    var stage = selectedStage ? selectedStage.value : 'buy';
     var positionValid = validNumericInput('#singlePositionInput');
     var leverageValid = validNumericInput('#leverageInput');
     var position = numberValue('#singlePositionInput', 0);
     var leverage = numberValue('#leverageInput', 0);
     var messages = [];
     var stop = $('#evidenceBuyStop');
-    if (!stop || !stop.value.trim() || !exists('#phaseBuyStop') || !$('#phaseBuyStop').checked) messages.push('请在第 4 模块填写并确认止损或逻辑失效条件');
+    if (stage === 'buy' && (!stop || !stop.value.trim() || !exists('#phaseBuyStop') || !$('#phaseBuyStop').checked)) messages.push('请在第 4 模块填写并确认止损或逻辑失效条件');
     if (!positionValid) messages.push('请填写有效的单票仓位');
-    else if (position > 15) messages.push('单票仓位需 ≤ 15%');
+    else if (stage !== 'sell' && position > 15) messages.push('单票仓位需 ≤ 15%');
     if (!leverageValid) messages.push('请填写有效的杠杆率');
-    else if (leverage > 20) messages.push('杠杆率需 ≤ 20%');
+    else if (stage !== 'sell' && leverage > 20) messages.push('杠杆率需 ≤ 20%');
     var output = $('#riskValidation');
     if (output) {
       output.className = messages.length ? 'validation-message bad' : 'validation-message good';
-      output.textContent = messages.length ? messages.join('；') : '风险校验通过';
+      output.textContent = messages.length ? messages.join('；') : stage === 'sell' && (position > 15 || leverage > 20) ? '卖出复核可继续；当前仓位或杠杆超限，应优先降低风险' : '风险校验通过';
     }
     return messages.length === 0;
   }
@@ -856,7 +858,7 @@
       '三、估值工具\n' + companyName + '｜' + valuationTool + '\n' + valuationGuide + '\n估值结论：' + state.valuationZone + (state.valuationRange ? '；合理区间 ' + state.valuationRange : '；尚未完成计算') + '\n\n' +
       '四、单票检查\n当前阶段：' + phase.stageLabel + '｜结论：' + phase.decision + '\n已满足 ' + phaseItems.length + '/7 项：' + (phaseItems.length ? phaseItems.join('；') : '尚未勾选') + '\n证据：' + (phase.evidence.length ? phase.evidence.join('；') : '尚未填写') + '\n\n' +
       '五、组合仓位\n' + preset.label + '：底仓 ' + preset.values[0] + '%、进攻仓 ' + preset.values[1] + '%、机动仓 ' + preset.values[2] + '%、现金 ' + preset.values[3] + '%\n\n' +
-      '六、风险纪律\n当前单票 ' + numberValue('#singlePositionInput', 0).toFixed(1) + '%，杠杆 ' + numberValue('#leverageInput', 0).toFixed(1) + '%；止损或逻辑失效条件：' + $('#evidenceBuyStop').value.trim() + '。\n\n' +
+      '六、风险纪律\n当前单票 ' + numberValue('#singlePositionInput', 0).toFixed(1) + '%，杠杆 ' + numberValue('#leverageInput', 0).toFixed(1) + '%；' + (phase.stage === 'buy' ? '止损或逻辑失效条件：' + $('#evidenceBuyStop').value.trim() : phase.stage === 'hold' ? '持有逻辑复核：' + $('#evidenceHoldLogic').value.trim() : '卖出证伪条件：' + $('#evidenceSellInvalid').value.trim()) + '。\n\n' +
       '七、行为自检\n风险等级：' + behavior.level + '｜五问：' + behavior.answers.join(' / ') + '\n红旗行为：' + (behavior.redLabels.length ? behavior.redLabels.join('；') : '无') + '\n执行状态：' + (behavior.blocked ? '暂停至 ' + new Date(state.pauseUntil).toLocaleString() : behavior.ready && phase.ready && state.postureReady && !updateConflicts(true).length ? '可以继续执行风险与证据复核' : '条件未完整或存在冲突，暂不执行') + '\n\n八、每周观察：已完成 ' + weeklyItems.length + '/5 项\n\n' +
       '本周主要风险：' + (exists('#weeklyRiskNote') && $('#weeklyRiskNote').value ? $('#weeklyRiskNote').value : '未填写') + '\n' +
       '下周验证事件：' + (exists('#weeklyNextEvent') && $('#weeklyNextEvent').value ? $('#weeklyNextEvent').value : '未填写') + '\n\n' +
@@ -944,7 +946,7 @@
       if (exists('#valuationFormula')) $('#valuationFormula').textContent = '公式：' + restoredConfig.formula;
       for (i = 0; i < 4; i += 1) {
         if (exists('#calcLabel' + i)) $('#calcLabel' + i).textContent = restoredConfig.labels[i];
-        if (exists('#calcInput' + i)) { $('#calcInput' + i).step = restoredConfig.steps[i]; $('#calcInput' + i).min = String(restoredConfig.mins[i]); $('#calcInput' + i).max = String(restoredConfig.maxs[i]); }
+        if (exists('#calcInput' + i)) { $('#calcInput' + i).placeholder = '例如 ' + restoredConfig.values[i]; $('#calcInput' + i).step = restoredConfig.steps[i]; $('#calcInput' + i).min = String(restoredConfig.mins[i]); $('#calcInput' + i).max = String(restoredConfig.maxs[i]); }
       }
     }
     if (exists('#summaryOutput')) $('#summaryOutput').value = snapshot.summary || '';

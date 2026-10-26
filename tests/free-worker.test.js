@@ -134,6 +134,21 @@ test('cloud risk check rejects a buy labeled reduceOnly', async () => {
   assert.equal(result.data.quantity, 0);
 });
 
+test('K-line quality check rejects invalid rows beyond the first', async () => {
+  const valid = { open: 10, high: 12, low: 9, close: 11, volume: 100 };
+  const bars = Array.from({ length: 60 }, () => ({ ...valid }));
+  const env = { DB: fakeDB(session()) };
+  const accepted = await call('/api/analysis/quality', { method: 'POST', body: JSON.stringify({ bars }) }, env);
+  assert.equal(accepted.data.status, 'ok');
+  bars[30] = { ...valid, high: 8 };
+  const rejected = await call('/api/analysis/quality', { method: 'POST', body: JSON.stringify({ bars }) }, env);
+  assert.equal(rejected.data.block_new_entries, true);
+  assert.match(rejected.data.issues.join(' '), /第31条 OHLC 关系异常/);
+  bars[30] = { ...valid, volume: 'NaN' };
+  const invalidNumber = await call('/api/analysis/quality', { method: 'POST', body: JSON.stringify({ bars }) }, env);
+  assert.equal(invalidNumber.data.block_new_entries, true);
+});
+
 test('candle reading is private to its account and uses revision checks', async () => {
   let currentUser = session();
   let stored = null;

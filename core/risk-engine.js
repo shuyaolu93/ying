@@ -89,7 +89,7 @@ function stressTest(portfolio, shockPct) {
     return total + nonNegative(position.quantity, 'position.quantity') * finite(position.price, 'position.price');
   }, 0);
   var loss = exposure * Math.max(0, -shock);
-  return { equityBefore: equity, exposure: exposure, estimatedLoss: loss, equityAfter: Math.max(0, equity - loss) };
+  return { equityBefore: equity, exposure: exposure, estimatedLoss: loss, equityAfter: equity - loss };
 }
 
 var api = { calculatePositionLimit: calculatePositionLimit, calculateDrawdown: calculateDrawdown, evaluateOrder: evaluateOrder, stressTest: stressTest };
