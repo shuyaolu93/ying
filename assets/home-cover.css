@@ -41,53 +41,6 @@
   pointer-events: none;
 }
 
-.book-cover .cover-meteor-field {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.book-cover .cover-meteor {
-  position: absolute;
-  top: 12%;
-  left: -230px;
-  width: 170px;
-  height: 2px;
-  border-radius: 999px;
-  opacity: 0;
-  background: linear-gradient(90deg, transparent, #9ebaff44 38%, #d9e7ffbb 78%, #fff);
-  box-shadow: 0 0 8px #9cbcff77;
-  filter: drop-shadow(0 0 5px #a8bdff88);
-  animation: cover-meteor-flight 9s linear infinite;
-  animation-delay: -1s;
-}
-
-.book-cover .cover-meteor::after {
-  content: "";
-  position: absolute;
-  top: -3px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 8px 2px #fff9, 0 0 22px 6px #a8c4ff77;
-}
-
-.book-cover .cover-meteor:nth-child(2) { top: 38%; width: 115px; animation-duration: 11s; animation-delay: -6s; opacity: 0; }
-.book-cover .cover-meteor:nth-child(3) { top: 64%; width: 210px; animation-duration: 13s; animation-delay: -9s; opacity: 0; }
-.book-cover .cover-meteor:nth-child(4) { top: 23%; width: 95px; animation-duration: 10s; animation-delay: -7s; opacity: 0; }
-.book-cover .cover-meteor:nth-child(5) { top: 76%; width: 140px; animation-duration: 12s; animation-delay: -3s; opacity: 0; }
-
-@keyframes cover-meteor-flight {
-  0% { transform: translate3d(0, -8vh, 0) rotate(24deg); opacity: 0; }
-  10% { opacity: .85; }
-  83% { opacity: .85; }
-  100% { transform: translate3d(calc(100vw + 330px), 26vh, 0) rotate(24deg); opacity: 0; }
-}
-
 .book-cover .cover-pointer-glow {
   position: absolute;
   top: 0;
@@ -299,7 +252,6 @@
 @media (prefers-reduced-motion: reduce) {
   .book-cover .cover-enter { animation: none; transition: none; }
   .book-cover .cover-pointer-glow { transition: none; }
-  .book-cover .cover-meteor-field { display: none; }
 }
 
 @media (max-width: 700px), (max-height: 500px) and (pointer: coarse) {
@@ -313,7 +265,6 @@
   }
   .book-cover::before,
   .book-cover #coverParticles,
-  .book-cover .cover-meteor-field,
   .book-cover .cover-pointer-glow,
   .book-cover .cover-bottom,
   .book-cover .cover-intro { display: none; }
