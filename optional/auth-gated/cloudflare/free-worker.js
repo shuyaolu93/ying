@@ -139,7 +139,7 @@ export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization, x-admin-secret", "access-control-allow-methods": "GET,POST,PUT,OPTIONS" } });
     const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/") return Response.redirect("https://shuyaolu93.github.io/ying/", 302);
+    if (request.method === "GET" && url.pathname === "/") return Response.redirect("https://www.zunshoujilv.top/", 302);
     if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB) });
     if (request.method === "GET" && url.pathname === "/api") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB), endpoints: { risk_check: { method: "POST", path: "/api/risk/check", content_type: "application/json" }, quality: { method: "POST", path: "/api/analysis/quality", content_type: "application/json" }, risk_history: { method: "GET", path: "/api/risk/history" } } });
     if (request.method === "GET" && url.pathname === "/api/risk/check") return json({ error: "method_not_allowed", message: "请使用 POST，并发送 JSON 风控参数", method: "POST", endpoint: "/api/risk/check" }, 405);

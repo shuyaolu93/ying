@@ -13,9 +13,9 @@ Ying 是一个面向个人投资者的交易决策研究工作台，提供宏观
 
 ## 网页版在线地址
 
-[Ying 网页版](https://shuyaolu93.github.io/ying/)
+[Ying 网页版](https://www.zunshoujilv.top/)
 
-[日本蜡烛图 · 形态与案例图谱](https://shuyaolu93.github.io/ying/candle.html)
+[日本蜡烛图 · 形态与案例图谱](https://www.zunshoujilv.top/candle.html)
 
 ## 本地运行
 
