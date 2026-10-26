@@ -60,6 +60,11 @@ async function openPage(t, options = {}) {
     } else if (pathname === '/api/auth/redeem') {
       user = { ...user, active: true, entitlementUntil: '2099-01-01T00:00:00Z' };
       data = { user };
+    } else if (pathname === '/api/market/hotspots') {
+      data = { fetchedAt: new Date().toISOString(), partial: false, items: [
+        { title: '制造业 PMI 数据发布', source: '国家统计局 · 最新发布', url: 'https://www.stats.gov.cn/sj/zxfb/example.html', publishedAt: new Date().toISOString() },
+        { title: '<img src=x onerror=alert(1)>', source: '国家统计局 · 数据解读', url: 'https://www.stats.gov.cn/sj/sjjd/example.html', publishedAt: new Date().toISOString() }
+      ] };
     } else if (pathname === '/api/messages' && route.request().method() === 'GET') {
       if (user?.email !== '1234567890') { status = 403; data = { message: '禁止访问' }; }
       else data = { messages: [{ email: '<img src=x onerror=alert(1)>@example.test', message: '<script>alert(1)</script>' }] };
@@ -161,6 +166,38 @@ test('valuation requires real inputs and hold or sell summaries do not require a
   }
   assert.match(await page.locator('#phaseDecision').textContent(), /待风险与行为复核/);
   assert.match(await page.locator('#riskValidation').textContent(), /单票仓位需 ≤ 15%/);
+});
+
+test('market update can be interpreted with evidence and is cleared between accounts', async t => {
+  const { page } = await openPage(t, { token: 'valid-token' });
+  await page.locator('.shell').waitFor({ state: 'visible' });
+  await page.locator('#hotspotNewsList .market-news').first().waitFor();
+  assert.equal(await page.locator('#hotspotNewsList img').count(), 0);
+  await page.locator('#hotspotNewsList .market-news button').first().click();
+  assert.equal(await page.locator('#hotspotTitle').inputValue(), '制造业 PMI 数据发布');
+  await page.locator('#hotspotFacts').fill('官方公布了本月制造业 PMI，统计口径与上月保持一致。');
+  await page.locator('[name="hotspotPath"][value="demand"]').check();
+  await page.locator('#hotspotWatch').fill('观察下月新订单指数和企业收入');
+  await page.locator('#hotspotCounter').fill('若新订单并未改善，需求传导假设不成立');
+  await page.locator('#hotspotForm button[type="submit"]').click();
+  assert.match(await page.locator('#hotspotOutput').inputValue(), /可能的影响路径：需求与收入/);
+  assert.match(await page.locator('#hotspotOutput').inputValue(), /原文：https:\/\/www\.stats\.gov\.cn/);
+  await page.waitForFunction(() => {
+    const raw = localStorage.getItem('tradeDecisionCardDraftV3:account-1');
+    const draft = raw && JSON.parse(raw);
+    return draft?.form?.some(item => item.id === 'hotspotOutput' && item.value.includes('需求与收入'));
+  });
+  await page.locator('#headerLogout').click();
+  await page.locator('#bookCover').waitFor({ state: 'visible' });
+  await page.locator('#coverEmail').fill('new-reader@example.test');
+  await page.locator('#coverPassword').fill('password123');
+  await page.locator('#coverAuthForm button[type="submit"]').click();
+  await page.waitForFunction(() => localStorage.getItem('rongheAuthTokenV1') === 'new-token');
+  await page.locator('#coverCode').fill('TEST-CODE');
+  await page.locator('#coverRedeem').click();
+  await page.locator('.shell').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#hotspotTitle').inputValue(), '');
+  assert.equal(await page.locator('#hotspotOutput').inputValue(), '');
 });
 
 test('login, redeem, personal center and logout remain usable', async t => {

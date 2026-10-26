@@ -77,6 +77,67 @@ function qualityReport(bars) {
   return { score, status: issues.length || score < 50 ? "blocked" : score < 85 ? "watch" : "ok", block_new_entries: Boolean(issues.length || score < 50), issues, warnings };
 }
 
+const marketFeeds = [
+  { source: "国家统计局 · 最新发布", url: "https://www.stats.gov.cn/sj/zxfb/rss.xml", hostname: "www.stats.gov.cn" },
+  { source: "国家统计局 · 数据解读", url: "https://www.stats.gov.cn/sj/sjjd/rss.xml", hostname: "www.stats.gov.cn" },
+  { source: "中国人民银行 · 新闻公告", url: "https://www.pbc.gov.cn/goutongjiaoliu/113456/2986536/index.html", hostname: "www.pbc.gov.cn" }
+];
+function rssText(value) {
+  return String(value || "").replace(/^\s*<!\[CDATA\[|\]\]>\s*$/g, "")
+    .replace(/&#(x[\da-f]+|\d+);/gi, (_, code) => {
+      const number = code[0].toLowerCase() === "x" ? parseInt(code.slice(1), 16) : Number(code);
+      return number > 0 && number <= 0x10ffff ? String.fromCodePoint(number) : "";
+    })
+    .replace(/&(amp|lt|gt|quot|apos|nbsp);/gi, (_, entity) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " })[entity.toLowerCase()])
+    .replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+}
+function rssField(item, field) {
+  const match = item.match(new RegExp("<" + field + "(?:\\s[^>]*)?>([\\s\\S]*?)<\\/" + field + ">", "i"));
+  return rssText(match && match[1]);
+}
+function parseMarketFeed(xml, feed) {
+  const items = [];
+  const blocks = xml.match(/<item>[\s\S]*?<\/item>/gi) || [];
+  for (const block of blocks.slice(0, 30)) {
+    const title = rssField(block, "title").slice(0, 180);
+    const rawUrl = rssField(block, "link");
+    const rawDate = rssField(block, "pubDate") || rssField(block, "pubTime");
+    let link;
+    try { link = new URL(rawUrl.startsWith("www.") ? "https://" + rawUrl : rawUrl, feed.url); } catch (_) { continue; }
+    const published = Date.parse(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(rawDate) ? rawDate.replace(" ", "T") + "+08:00" : rawDate);
+    if (!title || link.protocol !== "https:" || link.hostname !== feed.hostname || !Number.isFinite(published) || published > Date.now() + 86400000) continue;
+    items.push({ title, url: link.href, source: feed.source, publishedAt: new Date(published).toISOString() });
+  }
+  return items;
+}
+async function readMarketFeed(response) {
+  if (!response.ok || !response.body) throw new Error("market_feed_unavailable");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let size = 0, text = "";
+  try {
+    while (size < 131072) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const slice = value.slice(0, 131072 - size);
+      size += slice.length;
+      text += decoder.decode(slice, { stream: true });
+      if (slice.length < value.length) break;
+    }
+  } finally { await reader.cancel().catch(() => {}); }
+  return text;
+}
+async function loadMarketHotspots(fetcher = fetch) {
+  const results = await Promise.allSettled(marketFeeds.map(async feed => {
+    const response = await fetcher(feed.url, { headers: { range: "bytes=0-131071" } });
+    return parseMarketFeed(await readMarketFeed(response), feed);
+  }));
+  const items = results.flatMap(result => result.status === "fulfilled" ? result.value : []);
+  const unique = new Map();
+  for (const item of items) if (!unique.has(item.url)) unique.set(item.url, item);
+  return { items: [...unique.values()].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, 12), partial: results.some(result => result.status === "rejected"), fetchedAt: new Date().toISOString() };
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" } });
 }
@@ -165,6 +226,13 @@ export default {
     if (request.method === "GET" && url.pathname === "/") return Response.redirect("https://www.zunshoujilv.top/", 302);
     if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB) });
     if (request.method === "GET" && url.pathname === "/api") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB), endpoints: { risk_check: { method: "POST", path: "/api/risk/check", content_type: "application/json" }, quality: { method: "POST", path: "/api/analysis/quality", content_type: "application/json" }, risk_history: { method: "GET", path: "/api/risk/history" } } });
+    if (url.pathname === "/api/market/hotspots" && request.method === "GET") {
+      const user = await authenticatedUser(request, env.DB);
+      if (!user) return authRequired(user);
+      if (!entitlementRequired(user)) return json({ error: "entitlement_required", message: "请先兑换有效卡密" }, 403);
+      const data = await loadMarketHotspots(env.MARKET_FEED_FETCH || fetch);
+      return data.items.length ? json(data) : json({ error: "market_feed_unavailable", message: "官方动态暂时无法加载，请稍后重试", ...data }, 503);
+    }
     if (request.method === "GET" && url.pathname === "/api/risk/check") return json({ error: "method_not_allowed", message: "请使用 POST，并发送 JSON 风控参数", method: "POST", endpoint: "/api/risk/check" }, 405);
     if (request.method === "GET" && url.pathname === "/api/analysis/quality") return json({ error: "method_not_allowed", message: "请使用 POST，并发送 JSON K线数据", method: "POST", endpoint: "/api/analysis/quality" }, 405);
     if (url.pathname === "/api/auth/register" && request.method === "POST") {

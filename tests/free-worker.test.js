@@ -149,6 +149,27 @@ test('K-line quality check rejects invalid rows beyond the first', async () => {
   assert.equal(invalidNumber.data.block_new_entries, true);
 });
 
+test('market updates require an active account and expose only verified official links', async () => {
+  const published = new Date(Date.now() - 86400000).toISOString();
+  const xml = '<rss><channel>' +
+    '<item><title><![CDATA[PMI &amp; 需求]]></title><link>https://www.stats.gov.cn/sj/zxfb/example.html</link><pubDate>' + published + '</pubDate></item>' +
+    '<item><title>Unsafe</title><link>https://example.test/story</link><pubDate>' + published + '</pubDate></item>' +
+    '</channel></rss>';
+  const pbcXml = '<rss><channel><item><title><![CDATA[货币政策公告]]></title><link><![CDATA[www.pbc.gov.cn/goutongjiaoliu/example.html]]></link><pubDate>' + published + '</pubDate></item></channel></rss>';
+  const feed = async url => new Response(url.includes('pbc.gov.cn') ? pbcXml : xml, { status: 206 });
+  const active = { DB: fakeDB(session()), MARKET_FEED_FETCH: feed };
+  assert.equal((await call('/api/market/hotspots', { method: 'GET' }, { DB: fakeDB(null), MARKET_FEED_FETCH: feed })).status, 401);
+  assert.equal((await call('/api/market/hotspots', { method: 'GET' }, { DB: fakeDB(session({ entitlement_until: null })), MARKET_FEED_FETCH: feed })).status, 403);
+  const result = await call('/api/market/hotspots', { method: 'GET' }, active);
+  assert.equal(result.status, 200);
+  assert.equal(result.data.items.length, 2);
+  assert.equal(result.data.items[0].title, 'PMI & 需求');
+  assert.equal(result.data.items[0].url, 'https://www.stats.gov.cn/sj/zxfb/example.html');
+  assert.equal(result.data.items[1].url, 'https://www.pbc.gov.cn/goutongjiaoliu/example.html');
+  const unavailable = await call('/api/market/hotspots', { method: 'GET' }, { DB: fakeDB(session()), MARKET_FEED_FETCH: async () => new Response('', { status: 503 }) });
+  assert.equal(unavailable.status, 503);
+});
+
 test('candle reading is private to its account and uses revision checks', async () => {
   let currentUser = session();
   let stored = null;

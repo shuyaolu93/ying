@@ -4,7 +4,7 @@
   var $ = function (selector) { return document.querySelector(selector); };
   var $$ = function (selector) { return document.querySelectorAll(selector); };
   var state = { x: 0, y: 0, quadrant: '宏观坐标原点', macroValid: true, macroContributions: { pmi: 0, social: 0, m2: 0, yield: 0 }, posture: '均衡姿态', confidence: '低置信', rationaleScore: 0, rationaleSupport: [], rationaleCounter: [], allocationType: 'balance', allocationValues: [45, 25, 10, 20], triggerLabels: [], valuationType: 'stable', valuationCalculated: false, valuationZone: '等待计算', valuationRange: '', scenarioValues: [], phaseDecision: '暂不建议买入', phaseReady: false, behaviorLevel: '未完成', behaviorReady: false, behaviorBlocked: false, viewMode: 'full', lastDataChangeAt: '', lastCalculatedAt: '', summaryGenerated: false, activeRole: 1, undoSnapshot: null, history: [], carryover: 0 };
-  var APP_VERSION = '2.6.5-free';
+  var APP_VERSION = '2.6.6-free';
   var RULE_VERSION = 'R2.4';
   var FORMULA_VERSION = 'F1.3';
   state.safetyMargin = null;
@@ -863,6 +863,7 @@
       '本周主要风险：' + (exists('#weeklyRiskNote') && $('#weeklyRiskNote').value ? $('#weeklyRiskNote').value : '未填写') + '\n' +
       '下周验证事件：' + (exists('#weeklyNextEvent') && $('#weeklyNextEvent').value ? $('#weeklyNextEvent').value : '未填写') + '\n\n' +
       '附：情景模拟（不覆盖正式结论）\n' + (exists('#simQuadrant') ? $('#simQuadrant').textContent : '未运行') + '｜' + (exists('#simPosture') ? $('#simPosture').textContent : '未运行') + '｜仓位 ' + (exists('#simAllocation') ? $('#simAllocation').textContent : '—') + '\n\n' +
+      (exists('#hotspotOutput') && $('#hotspotOutput').value.trim() ? '市场热点观察（不作为独立交易信号）\n' + $('#hotspotOutput').value.trim().slice(0, 3000) + '\n\n' : '') +
       '版本记录：工具 ' + APP_VERSION + '｜规则 ' + RULE_VERSION + '｜公式 ' + FORMULA_VERSION + '｜数据 ' + (latestDataDate() || '未填写') + '｜计算 ' + displayDateTime(state.lastCalculatedAt) + '\n\n' +
       '⚠️ 本摘要用于交易复盘与风险纪律，不构成投资建议。\n#投资复盘 #交易系统 #资产配置';
     if (exists('#summaryOutput')) { $('#summaryOutput').value = text; $('#summaryOutput').focus(); $('#summaryOutput').select(); }
@@ -978,7 +979,7 @@
   }
 
   function resetForAccountScope() {
-    var cards = $('.role-card');
+    var cards = $$('.role-card');
     var i;
     for (i = 0; i < cards.length; i += 1) resetElements(cards[i]);
     state.x = 0;
