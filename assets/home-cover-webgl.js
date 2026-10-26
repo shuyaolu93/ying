@@ -4,13 +4,35 @@
   var cover = document.getElementById('bookCover');
   var canvas = document.getElementById('coverParticles');
   if (!cover || !canvas) return;
+  var glow = document.getElementById('coverPointerGlow');
+  var pointer = { targetX: .5, targetY: .5, targetStrength: 0, x: .5, y: .5, strength: 0 };
+  var renderPointer = null;
+
+  cover.addEventListener('pointermove', function (event) {
+    if (event.pointerType === 'touch') return;
+    var bounds = cover.getBoundingClientRect();
+    pointer.targetX = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+    pointer.targetY = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
+    pointer.targetStrength = 1;
+    if (glow) {
+      glow.style.transform = 'translate3d(' + (event.clientX - bounds.left - 140) + 'px,' + (event.clientY - bounds.top - 140) + 'px,0)';
+      glow.style.opacity = '1';
+    }
+    if (renderPointer) renderPointer();
+  }, { passive: true });
+  cover.addEventListener('pointerleave', function () {
+    pointer.targetStrength = 0;
+    if (glow) glow.style.opacity = '0';
+    if (renderPointer) renderPointer();
+  });
 
   function useCanvasFallback() {
     var replacement = canvas.cloneNode(false);
     replacement.dataset.renderer = 'canvas2d';
+    replacement.coverPointer = pointer;
     canvas.replaceWith(replacement);
     var script = document.createElement('script');
-    script.src = 'assets/home-cover.js?v=3';
+    script.src = 'assets/home-cover.js?v=4';
     document.body.appendChild(script);
   }
 
@@ -24,6 +46,10 @@
     'attribute vec4 a_meta;',
     'uniform float u_time;',
     'uniform float u_ratio;',
+    'uniform vec2 u_mouse;',
+    'uniform vec2 u_resolution;',
+    'uniform float u_mouse_strength;',
+    'uniform float u_mouse_radius;',
     'varying vec4 v_color;',
     'void main() {',
     '  float band = a_meta.x;',
@@ -49,17 +75,34 @@
     '  }',
     '  if (a_meta.w > .86) color = mix(color, vec3(.98, .94, 1.0), .80);',
     '  float edge = smoothstep(-.09, .015, x) * (1.0 - smoothstep(.985, 1.09, x));',
+    '  vec2 parallax = (u_mouse - .5) * u_mouse_strength * .014 * (1.0 - a_meta.y * .5);',
+    '  x += parallax.x;',
+    '  y += parallax.y;',
+    '  vec2 fromMouse = (vec2(x, y) - u_mouse) * u_resolution;',
+    '  float distancePx = length(fromMouse);',
+    '  float effect = u_mouse_strength * (1.0 - smoothstep(0.0, u_mouse_radius, distancePx));',
+    '  vec2 normal = fromMouse / max(distancePx, .001);',
+    '  vec2 tangent = vec2(-normal.y, normal.x);',
+    '  vec2 displacement = normal * (20.0 * effect)',
+    '    + tangent * (7.0 * effect * sin(u_time * 3.0 + a_seed.z));',
+    '  x += displacement.x / u_resolution.x;',
+    '  y += displacement.y / u_resolution.y;',
+    '  color = mix(color, vec3(.99, .97, 1.0), effect * .84);',
     '  float shimmer = .83 + .17 * sin(u_time * 2.6 + a_seed.z);',
-    '  v_color = vec4(color, a_meta.y * shimmer * edge);',
+    '  v_color = vec4(color, min(1.0, a_meta.y * shimmer * edge + effect * .52));',
     '  gl_Position = vec4(x * 2.0 - 1.0, 1.0 - y * 2.0, 0.0, 1.0);',
-    '  gl_PointSize = max(1.0, a_seed.w * u_ratio);',
+    '  gl_PointSize = max(1.0, (a_seed.w + effect * 1.2) * u_ratio);',
     '}'
   ].join('\n');
 
   var fragmentSource = [
     'precision mediump float;',
     'varying vec4 v_color;',
-    'void main() { gl_FragColor = v_color; }'
+    'void main() {',
+    '  float radius = length(gl_PointCoord - vec2(.5));',
+    '  float shape = 1.0 - smoothstep(.38, .54, radius);',
+    '  gl_FragColor = vec4(v_color.rgb, v_color.a * shape);',
+    '}'
   ].join('\n');
 
   function compile(type, source) {
@@ -74,6 +117,10 @@
   var buffer;
   var timeUniform;
   var ratioUniform;
+  var mouseUniform;
+  var resolutionUniform;
+  var mouseStrengthUniform;
+  var mouseRadiusUniform;
   try {
     program = gl.createProgram();
     gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
@@ -91,6 +138,10 @@
     gl.vertexAttribPointer(metaLocation, 4, gl.FLOAT, false, 32, 16);
     timeUniform = gl.getUniformLocation(program, 'u_time');
     ratioUniform = gl.getUniformLocation(program, 'u_ratio');
+    mouseUniform = gl.getUniformLocation(program, 'u_mouse');
+    resolutionUniform = gl.getUniformLocation(program, 'u_resolution');
+    mouseStrengthUniform = gl.getUniformLocation(program, 'u_mouse_strength');
+    mouseRadiusUniform = gl.getUniformLocation(program, 'u_mouse_radius');
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(0, 0, 0, 0);
@@ -159,9 +210,17 @@
 
   function draw(seconds) {
     if (destroyed) return;
+    var smoothing = reducedMotion.matches ? 1 : .18;
+    pointer.x += (pointer.targetX - pointer.x) * smoothing;
+    pointer.y += (pointer.targetY - pointer.y) * smoothing;
+    pointer.strength += (pointer.targetStrength - pointer.strength) * smoothing;
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.uniform1f(timeUniform, seconds);
     gl.uniform1f(ratioUniform, ratio);
+    gl.uniform2f(mouseUniform, pointer.x, pointer.y);
+    gl.uniform2f(resolutionUniform, width, height);
+    gl.uniform1f(mouseStrengthUniform, pointer.strength);
+    gl.uniform1f(mouseRadiusUniform, Math.max(90, Math.min(160, width * .105)));
     gl.drawArrays(gl.POINTS, 0, count + 3);
   }
 
@@ -186,6 +245,10 @@
     else draw((performance.now() - startTime) / 1000);
     if (!reducedMotion.matches) frame = window.requestAnimationFrame(animate);
   }
+
+  renderPointer = function () {
+    if (reducedMotion.matches && visible()) draw((performance.now() - startTime) / 1000);
+  };
 
   canvas.addEventListener('webglcontextlost', function (event) {
     event.preventDefault();

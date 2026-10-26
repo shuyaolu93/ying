@@ -41,6 +41,22 @@
   pointer-events: none;
 }
 
+.book-cover .cover-pointer-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate3d(-300px, -300px, 0);
+  transition: transform .14s ease-out, opacity .24s ease-out;
+  background: radial-gradient(circle, #e4eaff38 0%, #a4adf721 24%, #a681d20d 47%, transparent 72%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
 .book-cover .book-cover-inner {
   position: relative;
   z-index: 1;
@@ -231,4 +247,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .book-cover .cover-enter { animation: none; transition: none; }
+  .book-cover .cover-pointer-glow { transition: none; }
 }

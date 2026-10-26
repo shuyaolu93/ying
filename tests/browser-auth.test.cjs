@@ -124,6 +124,14 @@ test('homepage cover opens and closes the login form', async t => {
   assert.equal(await page.locator('#coverAuthForm').isVisible(), false);
 });
 
+test('homepage particles respond to pointer movement', async t => {
+  const { page } = await openPage(t);
+  await page.locator('#bookCover').waitFor({ state: 'visible' });
+  await page.mouse.move(110, 320);
+  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('#coverPointerGlow')).opacity) > .8);
+  assert.equal(await page.locator('#coverEnter').isVisible(), true);
+});
+
 test('active account sees the homepage cover before opening the desk', async t => {
   const { page } = await openPage(t, { token: 'valid-token', root: true });
   await page.waitForFunction(() => document.body.classList.contains('home-intro'));

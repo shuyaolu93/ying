@@ -7,6 +7,7 @@
 
   var context = canvas.getContext('2d', { alpha: true });
   if (!context) return;
+  var pointer = canvas.coverPointer || { targetX: .5, targetY: .5, targetStrength: 0 };
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   var points = [];
@@ -79,8 +80,22 @@
           + point.spread * height * .18;
       }
       var shimmer = reducedMotion.matches ? 1 : .7 + .3 * Math.sin(time * .0028 + point.phase);
-      context.fillStyle = 'rgba(' + point.color + ',' + (point.opacity * shimmer) + ')';
-      context.fillRect(x, y, point.size, point.size);
+      var effect = 0;
+      if (pointer.targetStrength) {
+        var dx = x - pointer.targetX * width;
+        var dy = y - pointer.targetY * height;
+        var radius = Math.max(90, Math.min(160, width * .105));
+        var distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared < radius * radius) {
+          var distance = Math.sqrt(distanceSquared);
+          effect = (1 - distance / radius) * pointer.targetStrength;
+          x += dx / (distance || 1) * 20 * effect;
+          y += dy / (distance || 1) * 20 * effect;
+        }
+      }
+      context.fillStyle = 'rgba(' + (effect > .12 ? '243,236,255' : point.color) + ',' + Math.min(1, point.opacity * shimmer + effect * .52) + ')';
+      var size = point.size + effect * 1.2;
+      context.fillRect(x, y, size, size);
     }
     drawGlint(time, 0);
     drawGlint(time, 1);
@@ -129,6 +144,8 @@
   window.addEventListener('resize', function () { resize(); updateAnimation(); }, { passive: true });
   document.addEventListener('visibilitychange', updateAnimation);
   if (reducedMotion.addEventListener) reducedMotion.addEventListener('change', updateAnimation);
+  cover.addEventListener('pointermove', function () { if (reducedMotion.matches && isVisible()) draw(0); }, { passive: true });
+  cover.addEventListener('pointerleave', function () { if (reducedMotion.matches && isVisible()) draw(0); });
   new MutationObserver(updateAnimation).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   resize();
   updateAnimation();
