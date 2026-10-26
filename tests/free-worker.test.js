@@ -82,6 +82,42 @@ test('dashboard and card generation require the configured administrator user ID
   assert.equal(db.queries.some(sql => sql.startsWith('INSERT INTO activation_codes')), true);
 });
 
+test('only an administrator can delete a code with no redemptions', async () => {
+  const deleted = [];
+  const db = {
+    prepare(sql) {
+      let values = [];
+      return {
+        bind(...args) { values = args; return this; },
+        async first() {
+          if (sql.includes('FROM sessions s')) return session();
+          if (sql.startsWith('SELECT id FROM activation_codes')) return values[0] === 11 ? { id: 11 } : null;
+          return null;
+        },
+        async run() {
+          if (sql.startsWith('DELETE FROM activation_codes')) {
+            assert.match(sql, /redeemed_count = 0/);
+            assert.match(sql, /NOT EXISTS \(SELECT 1 FROM code_redemptions WHERE code_id = \?\)/);
+            assert.deepEqual(values, [values[0], values[0]]);
+            deleted.push(values[0]);
+            return { meta: { changes: values[0] === 10 ? 1 : 0 } };
+          }
+          return { meta: { changes: 0 } };
+        }
+      };
+    }
+  };
+  const admin = { DB: db, MESSAGE_ADMIN_USER_ID: '7' };
+  const ordinary = { DB: db, MESSAGE_ADMIN_USER_ID: '8' };
+  assert.equal((await call('/api/admin/activation-codes/10', { method: 'DELETE' }, ordinary)).status, 403);
+  assert.equal((await call('/api/admin/activation-codes/10', { method: 'DELETE' }, { DB: fakeDB(null), MESSAGE_ADMIN_USER_ID: '7' })).status, 401);
+  assert.equal((await call('/api/admin/activation-codes/0', { method: 'DELETE' }, admin)).status, 400);
+  assert.equal(deleted.length, 0);
+  assert.equal((await call('/api/admin/activation-codes/10', { method: 'DELETE' }, admin)).status, 200);
+  assert.equal((await call('/api/admin/activation-codes/11', { method: 'DELETE' }, admin)).status, 409);
+  assert.equal((await call('/api/admin/activation-codes/12', { method: 'DELETE' }, admin)).status, 404);
+});
+
 test('changing a password revokes every existing session', async () => {
   const db = fakeDB(session());
   const result = await call('/api/auth/password', { method: 'POST', body: JSON.stringify({ password: 'new-password-123' }) }, { DB: db });

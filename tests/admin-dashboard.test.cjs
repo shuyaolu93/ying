@@ -23,6 +23,8 @@ test('only the administrator can open the dashboard, read safe records and gener
   const page = await context.newPage();
   const errors = [];
   let generatedWithBearer = false;
+  let deletedWithBearer = false;
+  let unusedCodePresent = true;
   page.on('pageerror', error => errors.push(error.message));
   await page.route('https://ying.test/**', async route => {
     const pathname = new URL(route.request().url()).pathname;
@@ -42,10 +44,15 @@ test('only the administrator can open the dashboard, read safe records and gener
       data = { nextOffset: null, items: section === 'messages'
         ? [{ id: 1, email: 'reader@example.test', message: '<img src=x onerror=alert(1)>', created_at: '2026-10-26 03:00:00' }]
         : section === 'users' ? [{ id: 1, email: 'reader@example.test', entitlement_until: null, active_sessions: 0 }]
+          : section === 'codes' ? [...(unusedCodePresent ? [{ id: 10, days: 30, redeemed_count: 0, max_redemptions: 1 }] : []), { id: 11, days: 30, redeemed_count: 1, max_redemptions: 1 }]
           : [] };
     } else if (url.pathname === '/api/admin/activation-codes') {
       generatedWithBearer = authorization === 'Bearer admin-token';
       data = { codes: ['RONGHE-TESTCARD123'], days: 30 };
+    } else if (url.pathname === '/api/admin/activation-codes/10' && route.request().method() === 'DELETE') {
+      deletedWithBearer = authorization === 'Bearer admin-token';
+      unusedCodePresent = false;
+      data = { ok: true };
     }
     await route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(data) });
   });
@@ -60,6 +67,13 @@ test('only the administrator can open the dashboard, read safe records and gener
   assert.equal(await page.locator('#stats .stat').count(), 8);
   assert.equal(await page.locator('#messagesSection img').count(), 0);
   assert.match(await page.locator('#messagesSection tbody').textContent(), /<img src=x onerror=alert\(1\)>/);
+  assert.equal(await page.getByRole('button', { name: '删除卡密 #10' }).count(), 1);
+  assert.equal(await page.getByRole('button', { name: '删除卡密 #11' }).count(), 0);
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: '删除卡密 #10' }).click();
+  await page.getByText('卡密 #10 已删除。').waitFor();
+  assert.equal(deletedWithBearer, true);
+  assert.equal(await page.getByRole('button', { name: '删除卡密 #10' }).count(), 0);
   await page.locator('#codeForm button').click();
   await page.waitForFunction(() => document.querySelector('#codeResult').value.includes('RONGHE-TESTCARD123'));
   assert.equal(generatedWithBearer, true);

@@ -87,6 +87,18 @@
           const cell = row.insertCell(); cell.textContent = value == null ? '—' : String(value);
           if (section === 'messages' && index === 1) cell.className = 'message';
         });
+        if (section === 'codes') {
+          const cell = row.insertCell();
+          if (Number(item.redeemed_count) === 0) {
+            const button = document.createElement('button');
+            button.type = 'button'; button.className = 'secondary'; button.textContent = '删除';
+            button.setAttribute('aria-label', '删除卡密 #' + item.id);
+            button.addEventListener('click', () => deleteCode(item.id, button));
+            cell.append(button);
+          } else {
+            cell.textContent = '已兑换';
+          }
+        }
       }
     }
     const pager = panel.querySelector('.pager'); pager.replaceChildren();
@@ -103,10 +115,27 @@
     const panel = document.querySelector('[data-section="' + section + '"]');
     try {
       const data = await request('/api/admin/dashboard?section=' + section + '&offset=' + offset);
+      if (section === 'codes' && offset > 0 && !data.items.length) return loadSection(section, Math.max(0, offset - 50));
       renderSection(section, data.items, data.nextOffset);
     } catch (error) {
       panel.querySelector('tbody').replaceChildren();
       panel.querySelector('.pager').textContent = '加载失败：' + error.message;
+      if (error.status === 401 || error.status === 403) showLogin('登录已失效或没有管理权限，请重新登录。');
+    }
+  }
+
+  async function deleteCode(id, button) {
+    if (!window.confirm('确定删除卡密 #' + id + ' 吗？删除后，持有这张卡密的人将无法兑换，且无法恢复。')) return;
+    const notice = $('codeListNotice'); notice.className = 'notice'; notice.textContent = '正在删除卡密 #' + id + '…';
+    button.disabled = true;
+    try {
+      await request('/api/admin/activation-codes/' + id, { method: 'DELETE' });
+      notice.className = 'notice good'; notice.textContent = '卡密 #' + id + ' 已删除。';
+      await Promise.all([loadOverview(), loadSection('codes', offsets.codes)]);
+    } catch (error) {
+      notice.textContent = '删除失败：' + error.message;
+      button.disabled = false;
+      if (error.status === 409 || error.status === 404) await loadSection('codes', offsets.codes);
       if (error.status === 401 || error.status === 403) showLogin('登录已失效或没有管理权限，请重新登录。');
     }
   }

@@ -144,7 +144,7 @@ async function saveQuality(db, result, userId) {
 
 export default {
   async fetch(request, env) {
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization, x-admin-secret", "access-control-allow-methods": "GET,POST,PUT,OPTIONS" } });
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization, x-admin-secret", "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS" } });
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/") return Response.redirect("https://www.zunshoujilv.top/", 302);
     if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "ronghe-free-worker", stateful: Boolean(env.DB) });
@@ -234,6 +234,20 @@ export default {
       const rows = await (section === "users" ? statement.bind(new Date().toISOString(), limit + 1, offset) : statement.bind(limit + 1, offset)).all();
       const items = rows.results || [];
       return json({ items: items.slice(0, limit), nextOffset: items.length > limit ? offset + limit : null });
+    }
+    if (url.pathname.startsWith("/api/admin/activation-codes/") && request.method === "DELETE") {
+      const user = await authenticatedUser(request, env.DB);
+      if (!user) return authRequired(user);
+      if (!canViewMessages(user, env)) return json({ error: "forbidden", message: "仅管理员可删除卡密" }, 403);
+      const match = /^\/api\/admin\/activation-codes\/(\d+)$/.exec(url.pathname);
+      const id = match ? Number(match[1]) : NaN;
+      if (!Number.isSafeInteger(id) || id < 1) return json({ error: "invalid_code_id", message: "卡密编号无效" }, 400);
+      const result = await env.DB.prepare("DELETE FROM activation_codes WHERE id = ? AND redeemed_count = 0 AND NOT EXISTS (SELECT 1 FROM code_redemptions WHERE code_id = ?)").bind(id, id).run();
+      if (result.meta.changes) return json({ ok: true });
+      const existing = await env.DB.prepare("SELECT id FROM activation_codes WHERE id = ?").bind(id).first();
+      return existing
+        ? json({ error: "code_redeemed", message: "这张卡密已经兑换，不能删除" }, 409)
+        : json({ error: "code_not_found", message: "卡密不存在或已被删除" }, 404);
     }
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       const user = await authenticatedUser(request, env.DB); return user ? json({ user: publicUser(user, env) }) : authRequired(user);
