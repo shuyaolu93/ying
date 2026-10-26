@@ -218,6 +218,59 @@ test('market update can be interpreted with evidence and is cleared between acco
   await page.locator('.shell').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#hotspotTitle').inputValue(), '');
   assert.equal(await page.locator('#hotspotOutput').inputValue(), '');
+  assert.equal(await page.locator('#analysisCompany').inputValue(), '');
+});
+
+test('nine questions calculate cash flow, valuation and observed price change without inventing answers', async t => {
+  const { page } = await openPage(t, { token: 'valid-token', market: true });
+  await page.locator('.shell').waitFor({ state: 'visible' });
+  const today = await page.evaluate(() => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(new Date()));
+  const yesterday = new Date(Date.parse(today + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10);
+  await page.locator('#analysisCompany').fill('示例公司 000001');
+  await page.locator('#analysisAsOf').fill(today);
+  await page.locator('#analysisYear').fill(String(Number(today.slice(0, 4)) + 1));
+  await page.locator('#analysisSource').fill('示例公司年度报告及公告');
+  for (const [id, value] of Object.entries({
+    qProfit: '利润增长取决于订单和毛利率。', qOperatingCash: '需核对应收账款回收。',
+    qRevenue: '新订单未必逐年线性增长。', qCashRetention: '需扣除扩产资本开支。',
+    qUncertainty: '若订单取消则假设失效。', qExpectations: '当前价可能隐含较高增长。',
+    qMethodReasoning: '参考可比公司与增长质量。', qProfitEvidence: '财报披露订单和毛利率。',
+    qValuationEvidence: '同业估值与利率水平。', qAssumptionChange: '公告前后订单假设变化。',
+    qPriceReaction: '同时观察行业指数和其他公告。'
+  })) await page.locator('#' + id).fill(value);
+  for (const [id, value] of Object.entries({
+    analysisOcf: '20', analysisCapex: '5', analysisCurrentPrice: '20', analysisProfit: '30', analysisShares: '10', analysisPe: '15',
+    analysisBeforePrice: '10', analysisAfterPrice: '12'
+  })) await page.locator('#' + id).fill(value);
+  await page.locator('#analysisPriceDate').fill(today);
+  await page.locator('#analysisBeforeDate').fill(yesterday);
+  await page.locator('#analysisAfterDate').fill(today);
+  await page.locator('#questionForm button[type="submit"]').click();
+  const output = await page.locator('#questionOutput').inputValue();
+  assert.match(await page.locator('#questionProgress').textContent(), /已回答 9 \/ 9 问/);
+  assert.match(output, /20 − 5 = 15 亿元/);
+  assert.match(output, /预测每股收益 3 元；乘目标市盈率 15 倍 = 情景估值 45 元\/股/);
+  assert.match(output, /约 6\.67 倍远期市盈率/);
+  assert.match(output, /观察涨跌幅 20%/);
+  assert.match(output, /价格变化不能单独归因于该消息/);
+  await page.waitForFunction(() => {
+    const note = JSON.parse(localStorage.getItem('yingMarketDraftV1:account-1') || 'null');
+    return note?.fields?.questionOutput?.includes('情景估值 45 元/股');
+  });
+  await page.waitForFunction(() => document.getElementById('marketStorageStatus').textContent.includes('按账号同步'));
+  await page.reload();
+  await page.locator('.shell').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#analysisCompany').inputValue(), '示例公司 000001');
+  assert.match(await page.locator('#questionOutput').inputValue(), /情景估值 45 元\/股/);
+  await page.locator('#analysisMethod').selectOption('manual');
+  assert.equal(await page.locator('#peMethodFields').isVisible(), false);
+  await page.locator('#analysisManualFormula').fill('按未来现金流折现并扣除净债务');
+  await page.locator('#analysisManualTarget').fill('40');
+  await page.locator('#questionForm button[type="submit"]').click();
+  assert.match(await page.locator('#questionOutput').inputValue(), /自行推导结果：40 元\/股（页面未验证该公式）/);
+  assert.doesNotMatch(await page.locator('#questionOutput').inputValue(), /情景估值 45 元\/股/);
+  await page.locator('#hotspotTitle').fill('新的公告');
+  assert.equal(await page.locator('#questionOutput').inputValue(), '');
 });
 
 test('old market draft is carried into the new page and old link redirects', async t => {

@@ -374,12 +374,19 @@ export default {
         const revision = Number(body.revision);
         const note = body.note;
         const fields = note && note.fields;
-        const allowed = new Set(["hotspotTitle", "hotspotPublished", "hotspotSourceName", "hotspotSourceUrl", "hotspotFacts", "hotspotPath", "hotspotDirection", "hotspotWatch", "hotspotCounter", "hotspotOutput"]);
+        const allowed = new Set([
+          "hotspotTitle", "hotspotPublished", "hotspotSourceName", "hotspotSourceUrl", "hotspotFacts", "hotspotPath", "hotspotDirection", "hotspotWatch", "hotspotCounter", "hotspotOutput",
+          "analysisCompany", "analysisAsOf", "analysisYear", "analysisSource", "analysisOcf", "analysisCapex", "analysisCurrentPrice", "analysisPriceDate",
+          "analysisMethod", "analysisProfit", "analysisShares", "analysisPe", "analysisManualFormula", "analysisManualTarget",
+          "analysisBeforeDate", "analysisBeforePrice", "analysisAfterDate", "analysisAfterPrice", "questionOutput",
+          "qProfit", "qOperatingCash", "qRevenue", "qCashRetention", "qUncertainty", "qExpectations", "qMethodReasoning",
+          "qProfitEvidence", "qValuationEvidence", "qAssumptionChange", "qPriceReaction"
+        ]);
         if (!Number.isInteger(revision) || revision < 0 || !note || typeof note !== "object" || Array.isArray(note) ||
             !fields || typeof fields !== "object" || Array.isArray(fields) ||
             Object.keys(fields).some(key => !allowed.has(key) || typeof fields[key] !== "string")) return json({ error: "invalid_note" }, 400);
         const payload = JSON.stringify({ updatedAt: String(note.updatedAt || ""), fields });
-        if (payload.length > 12000) return json({ error: "note_too_large", message: "热点记录超过保存上限" }, 413);
+        if (payload.length > 60000) return json({ error: "note_too_large", message: "热点记录超过保存上限" }, 413);
         const now = new Date().toISOString();
         const result = revision === 0
           ? await env.DB.prepare("INSERT INTO market_notes (user_id, payload, revision, updated_at) VALUES (?, ?, 1, ?) ON CONFLICT(user_id) DO NOTHING").bind(user.id, payload, now).run()

@@ -12,7 +12,14 @@
   };
   var directionLabels = { unknown: '待验证', positive: '可能偏正面（个人判断）', negative: '可能偏负面（个人判断）' };
   var refreshId = 0;
-  var fieldIds = ['hotspotTitle', 'hotspotPublished', 'hotspotSourceName', 'hotspotSourceUrl', 'hotspotFacts', 'hotspotWatch', 'hotspotCounter', 'hotspotOutput'];
+  var fieldIds = [
+    'hotspotTitle', 'hotspotPublished', 'hotspotSourceName', 'hotspotSourceUrl', 'hotspotFacts', 'hotspotWatch', 'hotspotCounter', 'hotspotOutput',
+    'analysisCompany', 'analysisAsOf', 'analysisYear', 'analysisSource', 'analysisOcf', 'analysisCapex', 'analysisCurrentPrice', 'analysisPriceDate',
+    'analysisMethod', 'analysisProfit', 'analysisShares', 'analysisPe', 'analysisManualFormula', 'analysisManualTarget',
+    'analysisBeforeDate', 'analysisBeforePrice', 'analysisAfterDate', 'analysisAfterPrice', 'questionOutput',
+    'qProfit', 'qOperatingCash', 'qRevenue', 'qCashRetention', 'qUncertainty', 'qExpectations', 'qMethodReasoning',
+    'qProfitEvidence', 'qValuationEvidence', 'qAssumptionChange', 'qPriceReaction'
+  ];
   var scope = '';
   var accountToken = '';
   var revision = 0;
@@ -53,12 +60,16 @@
   function apply(note) {
     applying = true;
     var fields = note && note.fields || {};
-    fieldIds.forEach(function (id) { $(id).value = typeof fields[id] === 'string' ? fields[id] : ''; });
+    fieldIds.forEach(function (id) { $(id).value = typeof fields[id] === 'string' ? fields[id] : (id === 'analysisMethod' ? 'pe' : ''); });
     $('hotspotForm').querySelectorAll('input[type="radio"]').forEach(function (input) {
       input.checked = fields[input.name] === input.value || (!fields[input.name] && input.name === 'hotspotDirection' && input.value === 'unknown');
     });
     $('copyHotspot').disabled = !$('hotspotOutput').value.trim();
+    $('copyQuestion').disabled = !$('questionOutput').value.trim();
     $('hotspotNotice').textContent = '';
+    $('questionNotice').textContent = '';
+    updateMethodFields();
+    updateQuestionProgress();
     applying = false;
   }
   function legacyNote(draft) {
@@ -252,11 +263,134 @@
     notice.textContent = '解读已生成，正在保存热点记录。';
   }
 
+  function answer(id) { return $(id).value.trim(); }
+  function optionalNumber(id) {
+    var raw = $(id).value.trim();
+    if (!raw) return null;
+    var value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+  }
+  function numberText(value) { return new Intl.NumberFormat('zh-CN', { maximumFractionDigits: value !== 0 && Math.abs(value) < 1 ? 4 : 2 }).format(value); }
+  function response(id) { return answer(id) || '待核实：尚未写下判断与证据。'; }
+  function updateMethodFields() {
+    var manual = $('analysisMethod').value === 'manual';
+    $('peMethodFields').hidden = manual;
+    $('manualMethodFields').hidden = !manual;
+    $('peMethodFields').querySelectorAll('input').forEach(function (input) { input.disabled = manual; });
+    $('manualMethodFields').querySelectorAll('input,textarea').forEach(function (input) { input.disabled = !manual; });
+  }
+  function answeredQuestions() {
+    return [
+      Boolean(answer('qProfit')), Boolean(answer('qOperatingCash')), Boolean(answer('qRevenue')),
+      Boolean(answer('qCashRetention')), Boolean(answer('qUncertainty')), Boolean(answer('qExpectations')),
+      Boolean(answer('qMethodReasoning')), Boolean(answer('qProfitEvidence') && answer('qValuationEvidence')),
+      Boolean(answer('qAssumptionChange') && answer('qPriceReaction'))
+    ].filter(Boolean).length;
+  }
+  function updateQuestionProgress() { $('questionProgress').textContent = '已回答 ' + answeredQuestions() + ' / 9 问'; }
+  function invalidateQuestionOutput(event) {
+    updateQuestionProgress();
+    if (event && event.target.id === 'questionOutput') return;
+    if (!$('questionOutput').value) return;
+    $('questionOutput').value = '';
+    $('copyQuestion').disabled = true;
+    $('questionNotice').textContent = '输入已变更，请重新生成九问记录。';
+    $('questionOutput').dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function generateQuestions(event) {
+    event.preventDefault();
+    var form = $('questionForm');
+    if (!form.reportValidity()) return;
+    var notice = $('questionNotice');
+    var company = answer('analysisCompany');
+    var asOf = answer('analysisAsOf');
+    var year = Number(answer('analysisYear'));
+    var currentYear = Number(asOf.slice(0, 4));
+    if (!company || !Number.isInteger(year) || year < currentYear) { notice.textContent = '预测年份不能早于资料截止年份。'; return; }
+    var today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(new Date());
+    if (asOf > today || ['analysisPriceDate', 'analysisBeforeDate', 'analysisAfterDate'].some(function (id) { return answer(id) > today; })) {
+      notice.textContent = '资料日期和股价观察日期不能晚于今天。'; return;
+    }
+    if (!answeredQuestions()) { notice.textContent = '请至少填写一项判断与依据后再生成。'; return; }
+    var ocf = optionalNumber('analysisOcf');
+    var capex = optionalNumber('analysisCapex');
+    var cashLine = '简化自由现金流：未计算；需同时填写同一预测期的经营现金流和资本开支。';
+    if (ocf !== null && capex !== null && capex >= 0 && Number.isFinite(ocf - capex))
+      cashLine = '简化自由现金流：' + numberText(ocf) + ' − ' + numberText(capex) + ' = ' + numberText(ocf - capex) + ' 亿元（经营现金流减资本开支；不等于可全部分配现金）。';
+
+    var currentPrice = optionalNumber('analysisCurrentPrice');
+    var priceLine = currentPrice !== null && currentPrice > 0 ? '观察股价：' + numberText(currentPrice) + ' 元/股' + (answer('analysisPriceDate') ? '（' + answer('analysisPriceDate') + '）' : '（日期未填）') + '。' : '观察股价：未填写。';
+    var methodLine = '';
+    var expectationLine = '';
+    if ($('analysisMethod').value === 'pe') {
+      var profit = optionalNumber('analysisProfit');
+      var shares = optionalNumber('analysisShares');
+      var pe = optionalNumber('analysisPe');
+      if (profit !== null && profit <= 0) methodLine = '市盈率法不适用：预测归母净利润不是正数。';
+      else if (profit !== null && shares !== null && shares > 0 && pe !== null && pe > 0 && Number.isFinite(profit / shares * pe)) {
+        var eps = profit / shares;
+        var target = eps * pe;
+        methodLine = year + ' 年预测归母净利润 ' + numberText(profit) + ' 亿元 ÷ 预测稀释后总股本 ' + numberText(shares) + ' 亿股 = 预测每股收益 ' + numberText(eps) + ' 元；乘目标市盈率 ' + numberText(pe) + ' 倍 = 情景估值 ' + numberText(target) + ' 元/股。该值未折现到当前时点，还需考虑实现时间和股本变化。';
+        if (currentPrice !== null && currentPrice > 0 && Number.isFinite(currentPrice / eps) && Number.isFinite((target / currentPrice - 1) * 100)) {
+          expectationLine = '按同一 ' + year + ' 年盈利预测口径，当前价格对应约 ' + numberText(currentPrice / eps) + ' 倍远期市盈率；与情景估值相差 ' + numberText((target / currentPrice - 1) * 100) + '%。这不能单独说明市场真实预期或未来回报。';
+        }
+      } else methodLine = '市盈率情景估值未计算；需填写正的预测利润、稀释后股数和目标市盈率。';
+    } else {
+      var formula = answer('analysisManualFormula');
+      var manualTarget = optionalNumber('analysisManualTarget');
+      methodLine = formula ? '其他方法与关键输入：' + formula + (manualTarget !== null && manualTarget > 0 ? '；自行推导结果：' + numberText(manualTarget) + ' 元/股（页面未验证该公式）。' : '；每股结果待核实。') : '其他方法尚未写出公式与关键输入，不能形成目标价。';
+      if (formula && manualTarget !== null && manualTarget > 0 && currentPrice !== null && currentPrice > 0 && Number.isFinite((manualTarget / currentPrice - 1) * 100))
+        expectationLine = '自行推导结果与观察股价相差 ' + numberText((manualTarget / currentPrice - 1) * 100) + '%；此差额不是预期收益率。';
+    }
+
+    var before = optionalNumber('analysisBeforePrice');
+    var after = optionalNumber('analysisAfterPrice');
+    var beforeDate = answer('analysisBeforeDate');
+    var afterDate = answer('analysisAfterDate');
+    var reactionLine = '消息前后股价变化：未计算；需填写两个日期及对应股价。';
+    if (beforeDate && afterDate && afterDate < beforeDate) reactionLine = '消息前后股价变化：日期顺序有误，请核对。';
+    else if (beforeDate && afterDate && before !== null && before > 0 && after !== null && after > 0)
+      reactionLine = '消息前 ' + beforeDate + '：' + numberText(before) + ' 元/股；消息后 ' + afterDate + '：' + numberText(after) + ' 元/股；观察涨跌幅 ' + numberText((after / before - 1) * 100) + '%。价格变化不能单独归因于该消息。';
+
+    var related = answer('hotspotTitle');
+    var lines = [
+      '企业研究九问｜' + company,
+      '资料截至：' + asOf + '｜预测年份：' + year,
+      '主要资料：' + (answer('analysisSource') || '未填写，应补充可核对的来源与时间'),
+      related ? '关联热点：' + related + '（需自行核对原文与适用公司）' : '',
+      '',
+      '1. 未来利润是否增长：' + response('qProfit'),
+      '2. 对未来经营现金流的影响：' + response('qOperatingCash'),
+      '3. 收入能否延续、是否可以线性外推：' + response('qRevenue'),
+      '4. 未来能留下多少现金流：' + response('qCashRetention'),
+      cashLine,
+      '5. 需要承担的不确定性：' + response('qUncertainty'),
+      '6. 当前价格包含的期待：' + response('qExpectations'),
+      priceLine,
+      expectationLine,
+      '7. ' + year + ' 年估值与目标价推导：' + methodLine,
+      '估值假设的理由：' + response('qMethodReasoning'),
+      '8. 盈利预测的关键证据：' + response('qProfitEvidence'),
+      '8. 估值依据的关键证据：' + response('qValuationEvidence'),
+      '9. 新消息改变的假设：' + response('qAssumptionChange'),
+      '9. 消息前后市场反应及其他可能原因：' + response('qPriceReaction'),
+      reactionLine,
+      '',
+      '完成度：' + answeredQuestions() + ' / 9 问。未回答项应继续核实，不应视为结论。',
+      '盈利、倍数、现金流和情景估值均依赖填写者的假设；本记录不构成买卖建议。'
+    ];
+    setValue('questionOutput', lines.filter(Boolean).join('\n'));
+    $('copyQuestion').disabled = false;
+    notice.textContent = '九问记录已生成，正在按账号保存。';
+  }
+
   function mount() {
     if (!$('hotspotForm')) return;
     $('refreshHotspots').addEventListener('click', refreshHotspots);
     $('hotspotForm').addEventListener('submit', interpret);
     $('hotspotForm').addEventListener('input', function (event) { if (event.target.id !== 'hotspotOutput') invalidateOutput(); });
+    $('hotspotForm').addEventListener('input', function (event) { if (event.target.id === 'hotspotTitle' || event.target.id === 'hotspotSourceUrl') invalidateQuestionOutput(); });
     $('hotspotForm').addEventListener('change', invalidateOutput);
     $('hotspotForm').addEventListener('input', scheduleSave);
     $('hotspotForm').addEventListener('change', scheduleSave);
@@ -264,6 +398,18 @@
       try { await navigator.clipboard.writeText($('hotspotOutput').value); $('hotspotNotice').textContent = '解读已复制。'; }
       catch (_) { $('hotspotOutput').select(); $('hotspotNotice').textContent = '请复制已选中的解读文本。'; }
     });
+    $('analysisMethod').addEventListener('change', updateMethodFields);
+    $('questionForm').addEventListener('input', invalidateQuestionOutput);
+    $('questionForm').addEventListener('change', invalidateQuestionOutput);
+    $('questionForm').addEventListener('input', scheduleSave);
+    $('questionForm').addEventListener('change', scheduleSave);
+    $('questionForm').addEventListener('submit', generateQuestions);
+    $('copyQuestion').addEventListener('click', async function () {
+      try { await navigator.clipboard.writeText($('questionOutput').value); $('questionNotice').textContent = '九问记录已复制。'; }
+      catch (_) { $('questionOutput').select(); $('questionNotice').textContent = '请复制已选中的记录文本。'; }
+    });
+    updateMethodFields();
+    updateQuestionProgress();
     window.addEventListener('ying:unlocked', function () {
       $('copyHotspot').disabled = !$('hotspotOutput').value.trim();
       refreshHotspots();

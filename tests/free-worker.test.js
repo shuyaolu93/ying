@@ -200,13 +200,14 @@ test('market notes are private, bounded and revision checked', async () => {
     }
   };
   const env = { DB: db };
-  const note = { updatedAt: new Date().toISOString(), fields: { hotspotTitle: '旧热点', hotspotOutput: '解读' } };
+  const note = { updatedAt: new Date().toISOString(), fields: { hotspotTitle: '旧热点', hotspotOutput: '解读', qProfit: '订单支持利润增长', questionOutput: '企业研究九问' } };
   assert.equal((await call('/api/market/notes', { method: 'GET' }, env)).data.note, null);
   assert.equal((await call('/api/market/notes', { method: 'PUT', body: JSON.stringify({ revision: 0, note }) }, env)).status, 200);
   assert.equal((await call('/api/market/notes', { method: 'GET' }, env)).data.note.fields.hotspotTitle, '旧热点');
+  assert.equal((await call('/api/market/notes', { method: 'GET' }, env)).data.note.fields.qProfit, '订单支持利润增长');
   assert.equal((await call('/api/market/notes', { method: 'PUT', body: JSON.stringify({ revision: 0, note }) }, env)).status, 409);
   assert.equal((await call('/api/market/notes', { method: 'PUT', body: JSON.stringify({ revision: 1, note: { ...note, fields: { password: 'secret' } } }) }, env)).status, 400);
-  assert.equal((await call('/api/market/notes', { method: 'PUT', body: JSON.stringify({ revision: 1, note: { ...note, fields: { hotspotFacts: 'x'.repeat(12001) } } }) }, env)).status, 413);
+  assert.equal((await call('/api/market/notes', { method: 'PUT', body: JSON.stringify({ revision: 1, note: { ...note, fields: { hotspotFacts: 'x'.repeat(60001) } } }) }, env)).status, 413);
   currentUser = session({ id: 8 });
   assert.equal((await call('/api/market/notes', { method: 'GET' }, env)).data.note, null);
   currentUser = session({ entitlement_until: null });
