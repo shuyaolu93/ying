@@ -76,6 +76,13 @@ END;
 CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
+CREATE TABLE IF NOT EXISTS auth_rate_counters (
+  key TEXT PRIMARY KEY,
+  bucket INTEGER NOT NULL,
+  attempts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_auth_rate_counters_bucket ON auth_rate_counters(bucket);
+
 CREATE TABLE IF NOT EXISTS login_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,

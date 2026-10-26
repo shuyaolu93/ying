@@ -45,4 +45,4 @@ npx wrangler deploy --config wrangler.free.jsonc
 
 个人中心的管理员留言列表由 Worker 的 `MESSAGE_ADMIN_USER_ID` 环境变量控制。将其设置为**已核实的管理员账号的数据库 `users.id`**；不要使用可自行注册的账号名作为权限依据。未设置时，个人中心不显示全站留言，管理员仍可通过现有的 `ADMIN_SECRET` 使用 `/api/admin/messages`。修改密码后，所有设备的旧会话都会失效，需要重新登录。
 
-安全加固迁移：先执行 `migrations/2026-10-27-security-hardening.sql`，再部署 Worker 和网页。迁移为卡密次数增加数据库触发器，并将已有会话的最晚到期时间收紧至 12 小时。新会话有效期为 12 小时，网页只在当前标签页的会话存储中保留登录令牌；关闭标签页后需重新登录。登录、注册、兑换分别受 Cloudflare Worker 的 IP 和账号限流约束；登录超限时需要完成 Turnstile 验证。Turnstile 密钥保存在 Worker 的 `TURNSTILE_SECRET` secret binding 中，不得写入源码。当前静态网页与 API 分属不同站点，暂未改用 HttpOnly Cookie；如后续将两者迁移至同站域名，应优先改为 HttpOnly、Secure、SameSite 会话 Cookie。
+安全加固迁移：先执行 `migrations/2026-10-27-security-hardening.sql`，再部署 Worker 和网页。迁移为卡密次数增加数据库触发器、建立严格限流计数表，并将已有会话的最晚到期时间收紧至 12 小时。新会话有效期为 12 小时，网页只在当前标签页的会话存储中保留登录令牌；关闭标签页后需重新登录。登录、注册、兑换分别受 Cloudflare Worker 绑定及 D1 计数表的 IP 和账号双重限流约束；登录超限时需要完成 Turnstile 验证。Turnstile 密钥保存在 Worker 的 `TURNSTILE_SECRET` secret binding 中，不得写入源码。当前静态网页与 API 分属不同站点，暂未改用 HttpOnly Cookie；如后续将两者迁移至同站域名，应优先改为 HttpOnly、Secure、SameSite 会话 Cookie。

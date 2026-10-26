@@ -45,6 +45,7 @@ async function call(pathname, options, env) {
   env = {
     AUTH_IP_RATE_LIMITER: { limit: async () => ({ success: true }) },
     AUTH_ACCOUNT_RATE_LIMITER: { limit: async () => ({ success: true }) },
+    AUTH_RATE_CHECK: async () => true,
     ...env
   };
   const request = new Request('https://worker.test' + pathname, {
@@ -87,6 +88,11 @@ test('account actions stop when either rate limit is exceeded or missing', async
     AUTH_IP_RATE_LIMITER: null
   });
   assert.equal(unavailable.status, 503);
+  const strictLimited = await call('/api/auth/login', { method: 'POST', body }, {
+    DB: db,
+    AUTH_RATE_CHECK: async (_db, _key, limit) => limit !== 8
+  });
+  assert.equal(strictLimited.status, 429);
   assert.equal(db.queries.length, 0);
 });
 

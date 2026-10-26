@@ -195,18 +195,33 @@ async function verifyLoginChallenge(request, env, token) {
     return false;
   }
 }
+async function consumeStrictRateLimit(db, key, limit) {
+  const bucket = Math.floor(Date.now() / 60000);
+  const row = await db.prepare(`INSERT INTO auth_rate_counters (key, bucket, attempts)
+    VALUES (?, ?, 1)
+    ON CONFLICT(key) DO UPDATE SET
+      attempts = CASE WHEN bucket = excluded.bucket THEN attempts + 1 ELSE 1 END,
+      bucket = excluded.bucket
+    RETURNING attempts`).bind(key, bucket).first();
+  if (!row || !Number.isSafeInteger(row.attempts)) throw new Error("rate_counter_unavailable");
+  if (Math.random() < 0.01) await db.prepare("DELETE FROM auth_rate_counters WHERE bucket < ?").bind(bucket - 5).run();
+  return row.attempts <= limit;
+}
 async function limitAccountAction(request, env, action, account, challengeToken) {
-  if (!env.AUTH_IP_RATE_LIMITER || !env.AUTH_ACCOUNT_RATE_LIMITER) {
+  if (!env.DB || !env.AUTH_IP_RATE_LIMITER || !env.AUTH_ACCOUNT_RATE_LIMITER) {
     return json({ error: "rate_limit_unavailable", message: "服务暂时不可用，请稍后重试" }, 503);
   }
   try {
     const ip = visitorIp(request) || "unknown";
-    const accountKey = await sha256(String(account || "").trim().toLowerCase());
-    const [ipLimit, accountLimit] = await Promise.all([
+    const accountKey = await sha256(String(account || "").trim().toLowerCase().slice(0, 256));
+    const strictCheck = env.AUTH_RATE_CHECK || consumeStrictRateLimit;
+    const [ipLimit, accountLimit, strictIp, strictAccount] = await Promise.all([
       env.AUTH_IP_RATE_LIMITER.limit({ key: action + ":" + ip }),
-      env.AUTH_ACCOUNT_RATE_LIMITER.limit({ key: action + ":" + accountKey })
+      env.AUTH_ACCOUNT_RATE_LIMITER.limit({ key: action + ":" + accountKey }),
+      strictCheck(env.DB, await sha256(action + ":ip:" + ip), 20),
+      strictCheck(env.DB, await sha256(action + ":account:" + accountKey), 8)
     ]);
-    if (!ipLimit.success || !accountLimit.success) {
+    if (!ipLimit.success || !accountLimit.success || !strictIp || !strictAccount) {
       if (action === "login") {
         if (challengeToken) {
           if (await verifyLoginChallenge(request, env, challengeToken)) return null;
