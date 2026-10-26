@@ -105,6 +105,19 @@ function publicUser(user, env) {
 }
 function authRequired(user) { return json({ error: "login_required", message: "请先登录并兑换有效卡密" }, 401); }
 function entitlementRequired(user) { return user && user.entitlement_until && new Date(user.entitlement_until) > new Date(); }
+function validCandleReading(reading) {
+  if (!reading || typeof reading !== 'object' || Array.isArray(reading) ||
+      typeof reading.chapter !== 'string' || reading.chapter.length > 32 ||
+      typeof reading.last !== 'string' || reading.last.length > 100 ||
+      !Number.isFinite(reading.scrollY) || reading.scrollY < 0 || reading.scrollY > 10000000 ||
+      !Number.isFinite(reading.updatedAt) || reading.updatedAt < 0 ||
+      !Array.isArray(reading.favorites) || reading.favorites.length > 500 ||
+      reading.favorites.some(id => typeof id !== 'string' || id.length > 100) ||
+      !reading.favoriteEdits || typeof reading.favoriteEdits !== 'object' || Array.isArray(reading.favoriteEdits)) return false;
+  const edits = Object.entries(reading.favoriteEdits);
+  return edits.length <= 500 && edits.every(([id, edit]) => id.length <= 100 && edit &&
+    typeof edit.saved === 'boolean' && Number.isFinite(edit.at) && edit.at >= 0);
+}
 
 async function saveDecision(db, body, result, userId) {
   if (!db) return false;
@@ -196,6 +209,30 @@ export default {
         if (!result.meta.changes) return json({ error: "revision_conflict", message: "另一台设备已更新记录，请重新加载" }, 409);
         return json({ ok: true, revision: revision + 1, updatedAt: now });
       } catch (error) { return json({ error: "state_save_failed", message: error.message }, 400); }
+    }
+    if (url.pathname === "/api/candle/reading" && (request.method === "GET" || request.method === "PUT")) {
+      const user = await authenticatedUser(request, env.DB);
+      if (!user) return authRequired(user);
+      if (!entitlementRequired(user)) return json({ error: "entitlement_required", message: "请先兑换有效卡密" }, 403);
+      if (request.method === "GET") {
+        const row = await env.DB.prepare("SELECT payload, revision, updated_at FROM candle_reading WHERE user_id = ?").bind(user.id).first();
+        return json(row ? { reading: JSON.parse(row.payload), revision: row.revision, updatedAt: row.updated_at } : { reading: null, revision: 0 });
+      }
+      try {
+        const body = await request.json();
+        const revision = Number(body.revision);
+        if (!Number.isInteger(revision) || revision < 0 || !validCandleReading(body.reading)) return json({ error: "invalid_reading" }, 400);
+        const reading = body.reading;
+        const payload = JSON.stringify({ chapter: reading.chapter, last: reading.last, scrollY: reading.scrollY,
+          updatedAt: reading.updatedAt, favorites: reading.favorites, favoriteEdits: reading.favoriteEdits });
+        if (payload.length > 100000) return json({ error: "reading_too_large" }, 413);
+        const now = new Date().toISOString();
+        const result = revision === 0
+          ? await env.DB.prepare("INSERT INTO candle_reading (user_id, payload, revision, updated_at) VALUES (?, ?, 1, ?) ON CONFLICT(user_id) DO NOTHING").bind(user.id, payload, now).run()
+          : await env.DB.prepare("UPDATE candle_reading SET payload = ?, revision = revision + 1, updated_at = ? WHERE user_id = ? AND revision = ?").bind(payload, now, user.id, revision).run();
+        if (!result.meta.changes) return json({ error: "revision_conflict", message: "另一台设备已更新阅读进度，请重新加载" }, 409);
+        return json({ ok: true, revision: revision + 1, updatedAt: now });
+      } catch (error) { return json({ error: "reading_save_failed" }, 400); }
     }
     if (url.pathname === "/api/auth/logout" && request.method === "POST") {
       const token = requestToken(request); if (token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha256(token)).run(); return json({ ok: true });
