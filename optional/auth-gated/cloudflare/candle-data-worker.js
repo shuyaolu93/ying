@@ -1,5 +1,9 @@
 // Authenticated catalogue API. The catalogue lives in D1, never in GitHub Pages assets.
-const allowedOrigin = 'https://shuyaolu93.github.io';
+const allowedOrigins = new Set([
+  'https://shuyaolu93.github.io',
+  'https://www.zunshoujilv.top',
+  'https://zunshoujilv.top'
+]);
 const encoder = new TextEncoder();
 
 function reply(data, status = 200, origin = '') {
@@ -9,7 +13,7 @@ function reply(data, status = 200, origin = '') {
     'x-content-type-options': 'nosniff',
     'vary': 'Origin'
   };
-  if (origin === allowedOrigin) headers['access-control-allow-origin'] = allowedOrigin;
+  if (allowedOrigins.has(origin)) headers['access-control-allow-origin'] = origin;
   return new Response(JSON.stringify(data), { status, headers });
 }
 
@@ -21,10 +25,10 @@ async function sha256(value) {
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('origin') || '';
-    if (origin && origin !== allowedOrigin) return reply({ error: 'forbidden' }, 403);
+    if (origin && !allowedOrigins.has(origin)) return reply({ error: 'forbidden' }, 403);
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: {
-        'access-control-allow-origin': allowedOrigin,
+        ...(allowedOrigins.has(origin) ? { 'access-control-allow-origin': origin } : {}),
         'access-control-allow-methods': 'GET, OPTIONS',
         'access-control-allow-headers': 'authorization',
         'access-control-max-age': '600',
