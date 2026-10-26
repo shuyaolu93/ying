@@ -97,11 +97,24 @@ test('new visitor sees the login page before content', async t => {
 
 test('expired session never reveals content during verification', async t => {
   const { page } = await openPage(t, { token: 'invalid-token', authDelay: 400 });
-  assert.equal(await page.locator('#bookCover').isVisible(), true);
+  assert.equal(await page.locator('body').getAttribute('class').then(s => s.includes('auth-pending')), true);
+  assert.equal(await page.locator('#bookCover').isVisible(), false);
   assert.equal(await page.locator('.shell').isVisible(), false);
   await page.waitForTimeout(600);
   assert.equal(await page.locator('#bookCover').isVisible(), true);
   assert.equal(await page.locator('.shell').isVisible(), false);
+});
+
+test('returning from the candle page never flashes the login cover for a valid session', async t => {
+  const { page } = await openPage(t, { token: 'valid-token', candle: true, authDelay: 500 });
+  await page.waitForFunction(() => !document.body.classList.contains('auth-pending'));
+  await page.locator('.site-switcher a[href="./index.html"]').click();
+  assert.equal(await page.locator('body').getAttribute('class').then(s => s.includes('auth-pending')), true);
+  assert.equal(await page.locator('#bookCover').isVisible(), false);
+  assert.equal(await page.locator('.shell').isVisible(), false);
+  await page.locator('.shell').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#bookCover').isVisible(), false);
+  assert.equal(await page.locator('body').getAttribute('class').then(s => s.includes('auth-gated')), false);
 });
 
 test('login, redeem, personal center and logout remain usable', async t => {
@@ -114,7 +127,7 @@ test('login, redeem, personal center and logout remain usable', async t => {
   assert.equal(await page.locator('#authModal').isVisible(), false);
   await page.fill('#coverCode', 'RONGHE-TEST');
   await page.click('#coverRedeem');
-  await page.waitForFunction(() => !document.body.classList.contains('auth-gated'));
+  await page.locator('.shell').waitFor({ state: 'visible' });
   assert.equal(await page.locator('.shell').isVisible(), true);
   await page.click('#accountButton');
   assert.equal(await page.locator('#profileCenter').isVisible(), true);
@@ -130,7 +143,7 @@ test('login, redeem, personal center and logout remain usable', async t => {
 
 test('owner message list displays account names as text', async t => {
   const { page } = await openPage(t, { token: 'valid-token', owner: true });
-  await page.waitForFunction(() => !document.body.classList.contains('auth-gated'));
+  await page.locator('.shell').waitFor({ state: 'visible' });
   await page.click('#accountButton');
   await page.waitForFunction(() => document.querySelector('#myMessages')?.textContent.includes('<img'));
   assert.equal(await page.locator('#myMessages img, #myMessages script').count(), 0);
@@ -138,7 +151,7 @@ test('owner message list displays account names as text', async t => {
 
 test('research backup download still works under the content security policy', async t => {
   const { page } = await openPage(t, { token: 'valid-token' });
-  await page.waitForFunction(() => !document.body.classList.contains('auth-gated'));
+  await page.locator('.shell').waitFor({ state: 'visible' });
   const download = page.waitForEvent('download');
   await page.locator('#exportDesk').click();
   assert.match((await download).suggestedFilename(), /^ying-research-.*\.json$/);

@@ -15,6 +15,7 @@
   function show(message, good) { var note = document.getElementById('authNote'); if (!note) return; note.textContent = message; note.className = 'auth-note ' + (good ? 'good' : 'bad'); }
   function coverMessage(message, good) { var note = document.getElementById('coverNote'); if (!note) return; note.textContent = message || ''; note.style.color = good ? '#2f7d5c' : '#b63b2b'; }
   function enterApp() { document.body.classList.remove('auth-pending'); document.body.classList.remove('auth-gated'); coverMessage(''); }
+  function showPending() { document.body.classList.remove('auth-gated'); document.body.classList.add('auth-pending'); }
   function showCover(message) { document.body.classList.remove('auth-pending'); document.body.classList.add('auth-gated'); if (message) coverMessage(message); }
   function active() { return Boolean(user && user.active && new Date(user.entitlementUntil).getTime() > Date.now()); }
   function render() {
@@ -61,8 +62,10 @@
   function open() { var modal = document.getElementById('authModal'); if (modal) { modal.hidden = false; document.body.classList.add('auth-modal-open'); var panel = modal.querySelector('.auth-panel'); if (panel) panel.scrollTop = 0; render(); renderProfile(); } }
   function syncAccount() {
     var epoch = ++authEpoch;
-    showCover(); render();
-    var scope = active() ? String(user.id) : null;
+    var granted = active();
+    if (granted) showPending(); else showCover();
+    render();
+    var scope = granted ? String(user.id) : null;
     return Promise.resolve(window.RongheDesk ? window.RongheDesk.setAccount(scope) : null).then(function () {
       if (epoch !== authEpoch) return;
       if (active()) { close(); enterApp(); }
