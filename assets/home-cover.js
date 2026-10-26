@@ -10,6 +10,7 @@
   var pointer = canvas.coverPointer || { targetX: .5, targetY: .5, targetStrength: 0 };
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var mobileLayout = window.matchMedia('(max-width: 700px), (max-height: 500px) and (pointer: coarse)');
   var points = [];
   var frame = 0;
   var lastFrame = 0;
@@ -21,6 +22,7 @@
   }
 
   function resize() {
+    if (mobileLayout.matches) return;
     width = Math.max(1, cover.clientWidth);
     height = Math.max(1, cover.clientHeight);
     var ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -94,7 +96,7 @@
         }
       }
       context.fillStyle = 'rgba(' + (effect > .12 ? '243,236,255' : point.color) + ',' + Math.min(1, point.opacity * shimmer + effect * .52) + ')';
-      var size = point.size + effect * 1.2;
+      var size = point.size * .78 + effect * .9;
       context.fillRect(x, y, size, size);
     }
     drawGlint(time, 0);
@@ -116,12 +118,12 @@
     context.fillRect(x - 35, y - 35, 70, 70);
     context.fillStyle = 'rgba(240,233,255,.82)';
     context.beginPath();
-    context.arc(x, y, 1.8, 0, Math.PI * 2);
+    context.arc(x, y, 1.4, 0, Math.PI * 2);
     context.fill();
   }
 
   function isVisible() {
-    return !document.hidden && (document.body.classList.contains('auth-gated') || document.body.classList.contains('home-intro'));
+    return !mobileLayout.matches && !document.hidden && (document.body.classList.contains('auth-gated') || document.body.classList.contains('home-intro'));
   }
 
   function animate(time) {
@@ -144,6 +146,7 @@
   window.addEventListener('resize', function () { resize(); updateAnimation(); }, { passive: true });
   document.addEventListener('visibilitychange', updateAnimation);
   if (reducedMotion.addEventListener) reducedMotion.addEventListener('change', updateAnimation);
+  if (mobileLayout.addEventListener) mobileLayout.addEventListener('change', updateAnimation);
   cover.addEventListener('pointermove', function () { if (reducedMotion.matches && isVisible()) draw(0); }, { passive: true });
   cover.addEventListener('pointerleave', function () { if (reducedMotion.matches && isVisible()) draw(0); });
   new MutationObserver(updateAnimation).observe(document.body, { attributes: true, attributeFilter: ['class'] });

@@ -109,13 +109,16 @@ async function openPage(t, options = {}) {
 test('new visitor sees the login page before content', async t => {
   const { page } = await openPage(t);
   assert.equal(await page.locator('#bookCover').isVisible(), true);
+  assert.equal(await page.locator('.cover-mobile-intro').isVisible(), true);
+  assert.equal(await page.locator('#coverAuthForm').isVisible(), true);
+  assert.equal(await page.locator('#coverParticles').isVisible(), false);
   assert.equal(await page.locator('.shell').isVisible(), false);
   assert.equal(await page.locator('body').getAttribute('class').then(s => s.includes('auth-gated')), true);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 });
 
 test('homepage cover opens and closes the login form', async t => {
-  const { page } = await openPage(t);
+  const { page } = await openPage(t, { viewport: { width: 820, height: 1024 } });
   await page.locator('#bookCover').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#coverAuthForm').isVisible(), false);
   await page.locator('#coverEnter').click();
@@ -125,7 +128,7 @@ test('homepage cover opens and closes the login form', async t => {
 });
 
 test('homepage particles respond to pointer movement', async t => {
-  const { page } = await openPage(t);
+  const { page } = await openPage(t, { viewport: { width: 820, height: 1024 } });
   await page.locator('#bookCover').waitFor({ state: 'visible' });
   await page.mouse.move(110, 320);
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('#coverPointerGlow')).opacity) > .8);
@@ -133,7 +136,7 @@ test('homepage particles respond to pointer movement', async t => {
 });
 
 test('active account sees the homepage cover before opening the desk', async t => {
-  const { page } = await openPage(t, { token: 'valid-token', root: true });
+  const { page } = await openPage(t, { token: 'valid-token', root: true, viewport: { width: 820, height: 1024 } });
   await page.waitForFunction(() => document.body.classList.contains('home-intro'));
   assert.equal(await page.locator('#bookCover').isVisible(), true);
   assert.equal(await page.locator('.shell').isVisible(), false);
@@ -143,6 +146,13 @@ test('active account sees the homepage cover before opening the desk', async t =
   await page.goto('https://ying.test/?v=cover-preview');
   await page.waitForFunction(() => document.body.classList.contains('home-intro'));
   assert.equal(await page.locator('#bookCover').isVisible(), true);
+});
+
+test('active mobile account enters the desk directly', async t => {
+  const { page } = await openPage(t, { token: 'valid-token', root: true });
+  await page.locator('.shell').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#bookCover').isVisible(), false);
+  assert.equal(await page.locator('body').evaluate(node => node.classList.contains('home-intro')), false);
 });
 
 test('expired session never reveals content during verification', async t => {
@@ -354,7 +364,6 @@ test('market page does not reveal the prior account if login changes during clou
 
 test('login, redeem, personal center and logout remain usable', async t => {
   const { page, calls } = await openPage(t);
-  await page.click('#coverEnter');
   await page.fill('#coverEmail', '12345678');
   await page.fill('#coverPassword', 'password123');
   await page.locator('#coverAuthForm button[type="submit"]').click();

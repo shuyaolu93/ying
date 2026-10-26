@@ -90,6 +90,9 @@
   width: 100%;
 }
 
+.book-cover .cover-mobile-intro,
+.book-cover .cover-mobile-hint { display: none; }
+
 .book-cover .cover-intro { width: min(100%, 1020px); }
 
 .book-cover .cover-kicker {
@@ -248,4 +251,85 @@
 @media (prefers-reduced-motion: reduce) {
   .book-cover .cover-enter { animation: none; transition: none; }
   .book-cover .cover-pointer-glow { transition: none; }
+}
+
+@media (max-width: 700px), (max-height: 500px) and (pointer: coarse) {
+  .book-cover {
+    align-items: flex-start;
+    justify-content: center;
+    padding: 14px;
+    background: #eee8dc;
+    color: #34322d;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .book-cover::before,
+  .book-cover #coverParticles,
+  .book-cover .cover-pointer-glow,
+  .book-cover .cover-bottom,
+  .book-cover .cover-intro { display: none; }
+  .book-cover .book-cover-inner {
+    display: block;
+    width: min(100%, 500px);
+    min-height: 0;
+    margin: 0 auto;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 22px;
+    background: #fbfaf7;
+    box-shadow: 0 18px 60px #51483e18;
+    color: #34322d;
+    text-align: left;
+  }
+  .book-cover .book-cover-inner > .cover-content { display: block; }
+  .book-cover .cover-mobile-intro { display: block; padding: 28px 24px 24px; }
+  .book-cover .cover-mobile-kicker {
+    color: #77736a;
+    font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .14em;
+  }
+  .book-cover .cover-mobile-title {
+    margin: 11px 0 9px;
+    color: #1e2f50;
+    font: 800 2.25rem/1.12 "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .book-cover .cover-mobile-subtitle { margin: 0; color: #8d8a82; font-size: 15px; }
+  .book-cover .cover-mobile-rule { width: 56px; margin: 22px 0; border-top: 3px solid #77736a; }
+  .book-cover .cover-mobile-motto { margin: 0; color: #77736a; font-size: 14px; line-height: 1.65; }
+  .book-cover:not(.form-open) .cover-form,
+  .book-cover.form-open .cover-form {
+    display: flex;
+    width: 100%;
+    margin: 0;
+    padding: 26px 24px 30px;
+    border: 0;
+    border-top: 1px solid #e2dfd7;
+    border-radius: 0;
+    background: #f8f7f3;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    color: #34322d;
+  }
+  .book-cover .cover-back,
+  .book-cover .cover-desktop-hint { display: none; }
+  .book-cover .form-heading { margin-bottom: 16px; color: #34322d; }
+  .book-cover .form-heading .cover-mobile-hint { display: block; color: #91a0b6; }
+  .book-cover .cover-form label { margin-top: 12px; color: #625e56; font-size: 13px; }
+  .book-cover .cover-form input {
+    margin-top: 7px;
+    padding: 13px 14px;
+    border: 1px solid #d8d4ca;
+    border-radius: 12px;
+    background: #fff;
+    color: #34322d;
+  }
+  .book-cover .cover-form input::placeholder { color: #9a968d; }
+  .book-cover .cover-form input:focus { border-color: #77736a; box-shadow: 0 0 0 4px #77736a18; }
+  .book-cover .cover-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+  .book-cover .cover-actions button { min-height: 46px; }
+  .book-cover .cover-actions .cover-primary { border: 0; background: #3b3934; color: #fff; }
+  .book-cover .cover-actions .cover-secondary { border: 1px solid #cbc7bd; background: #fff; color: #4c4942; }
+  .book-cover .redeem-inline { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2dfd7; }
+  .book-cover .redeem-inline button { min-height: 46px; border: 1px solid #cbc7bd; background: #eeece7; color: #4c4942; }
+  .book-cover .cover-note { min-height: 26px; margin-top: 14px; font-size: 13px; }
 }

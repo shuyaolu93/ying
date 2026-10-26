@@ -32,7 +32,7 @@
     replacement.coverPointer = pointer;
     canvas.replaceWith(replacement);
     var script = document.createElement('script');
-    script.src = 'assets/home-cover.js?v=4';
+    script.src = 'assets/home-cover.js?v=6';
     document.body.appendChild(script);
   }
 
@@ -91,7 +91,7 @@
     '  float shimmer = .83 + .17 * sin(u_time * 2.6 + a_seed.z);',
     '  v_color = vec4(color, min(1.0, a_meta.y * shimmer * edge + effect * .52));',
     '  gl_Position = vec4(x * 2.0 - 1.0, 1.0 - y * 2.0, 0.0, 1.0);',
-    '  gl_PointSize = max(1.0, (a_seed.w + effect * 1.2) * u_ratio);',
+    '  gl_PointSize = max(1.0, (a_seed.w * .78 + effect * .9) * u_ratio);',
     '}'
   ].join('\n');
 
@@ -152,6 +152,7 @@
 
   canvas.dataset.renderer = 'webgl';
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var mobileLayout = window.matchMedia('(max-width: 700px), (max-height: 500px) and (pointer: coarse)');
   var count = 0;
   var width = 0;
   var height = 0;
@@ -164,7 +165,7 @@
   function spread() { return (Math.random() + Math.random() + Math.random() - 1.5) / 1.5; }
 
   function resize() {
-    if (destroyed) return;
+    if (destroyed || mobileLayout.matches) return;
     width = Math.max(1, cover.clientWidth);
     height = Math.max(1, cover.clientHeight);
     ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -225,7 +226,7 @@
   }
 
   function visible() {
-    return !destroyed && !document.hidden && (document.body.classList.contains('auth-gated') || document.body.classList.contains('home-intro'));
+    return !destroyed && !mobileLayout.matches && !document.hidden && (document.body.classList.contains('auth-gated') || document.body.classList.contains('home-intro'));
   }
 
   function animate(now) {
@@ -259,6 +260,7 @@
   window.addEventListener('resize', function () { resize(); update(); }, { passive: true });
   document.addEventListener('visibilitychange', update);
   if (reducedMotion.addEventListener) reducedMotion.addEventListener('change', update);
+  if (mobileLayout.addEventListener) mobileLayout.addEventListener('change', update);
   new MutationObserver(update).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   resize();
   update();

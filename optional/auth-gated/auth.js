@@ -2,6 +2,7 @@
   'use strict';
   var API = 'https://ronghe-risk-free.shuyaolu93.workers.dev';
   var tokenKey = 'rongheAuthTokenV1';
+  var mobileCoverQuery = window.matchMedia('(max-width: 700px), (max-height: 500px) and (pointer: coarse)');
   var user = null;
   var token = '';
   try { token = localStorage.getItem(tokenKey) || ''; } catch (error) {}
@@ -13,12 +14,12 @@
     return fetch(API + path, options).then(function (response) { return response.json().then(function (data) { if (sentToken !== token) { var stale = new Error('账户已切换'); stale.stale = true; throw stale; } if (!response.ok) throw new Error(data.message || data.error || '请求失败'); return data; }); });
   }
   function show(message, good) { var note = document.getElementById('authNote'); if (!note) return; note.textContent = message; note.className = 'auth-note ' + (good ? 'good' : 'bad'); }
-  function coverMessage(message, good) { var note = document.getElementById('coverNote'); if (!note) return; note.textContent = message || ''; note.style.color = good ? '#8de3c6' : '#ff9f9b'; }
+  function coverMessage(message, good) { var note = document.getElementById('coverNote'); if (!note) return; note.textContent = message || ''; note.style.color = mobileCoverQuery.matches ? (good ? '#2f7d5c' : '#b63b2b') : (good ? '#8de3c6' : '#ff9f9b'); }
   function enterApp() { document.body.classList.remove('auth-pending', 'auth-gated', 'home-intro'); document.getElementById('bookCover').classList.remove('form-open'); coverMessage(''); window.dispatchEvent(new Event('ying:unlocked')); }
   function showPending() { document.body.classList.remove('auth-gated', 'home-intro'); document.body.classList.add('auth-pending'); }
   function showCover(message) { document.body.classList.remove('auth-pending', 'home-intro'); document.body.classList.add('auth-gated'); if (message) { document.getElementById('bookCover').classList.add('form-open'); coverMessage(message); } }
   function showIntro() { document.body.classList.remove('auth-pending', 'auth-gated'); document.body.classList.add('home-intro'); document.getElementById('bookCover').classList.remove('form-open'); coverMessage(''); }
-  function showIntroOnEntry() { return /\/$/.test(window.location.pathname) && !window.location.hash && !new URLSearchParams(window.location.search).has('workspace'); }
+  function showIntroOnEntry() { return !mobileCoverQuery.matches && /\/$/.test(window.location.pathname) && !window.location.hash && !new URLSearchParams(window.location.search).has('workspace'); }
   function active() { return Boolean(user && user.active && new Date(user.entitlementUntil).getTime() > Date.now()); }
   function render() {
     var button = document.getElementById('accountButton'); if (!button) return;
@@ -100,6 +101,9 @@
     var email = document.getElementById('coverEmail'); if (email) email.focus();
   }
   function mount() {
+    if (mobileCoverQuery.addEventListener) mobileCoverQuery.addEventListener('change', function () {
+      if (mobileCoverQuery.matches && active() && document.body.classList.contains('home-intro')) enterApp();
+    });
     var pill = document.querySelector('.live-pill'); if (!pill) return;
     pill.outerHTML = '<div class="account-controls"><button type="button" class="account-button" id="accountButton">登录 / 注册</button><button type="button" class="account-button" id="headerLogout">退出登录</button></div>';
     var overlay = document.createElement('div'); overlay.id = 'authModal'; overlay.className = 'auth-overlay'; overlay.hidden = true;
