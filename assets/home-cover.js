@@ -22,12 +22,12 @@
   function resize() {
     width = Math.max(1, cover.clientWidth);
     height = Math.max(1, cover.clientHeight);
-    var ratio = Math.min(window.devicePixelRatio || 1, 1.5);
+    var ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(width * ratio);
     canvas.height = Math.round(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-    var count = Math.min(5200, Math.max(1700, Math.round(width * 3.2)));
+    var count = Math.min(20000, Math.max(9000, Math.round(width * height * .016)));
     points = [];
     for (var i = 0; i < count; i += 1) {
       var band = i < count * .51 ? 0 : 1;
@@ -40,9 +40,9 @@
         spread: randomSpread(),
         phase: Math.random() * Math.PI * 2,
         speed: .7 + Math.random() * .7,
-        size: .55 + Math.random() * 1.5,
+        size: .8 + Math.random() * 1.5,
         color: color,
-        opacity: .13 + Math.random() * .55,
+        opacity: .27 + Math.random() * .62,
         band: band
       });
     }
@@ -111,7 +111,7 @@
 
   function animate(time) {
     if (!isVisible() || reducedMotion.matches) { frame = 0; return; }
-    if (time - lastFrame >= 32) {
+    if (time - lastFrame >= 50) {
       draw(time);
       lastFrame = time;
     }

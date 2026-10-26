@@ -11,7 +11,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   isolation: isolate;
-  background: radial-gradient(ellipse at 50% 58%, #11101e 0%, #080912 43%, #030407 78%);
+  background: radial-gradient(ellipse at 50% 58%, #090913 0%, #040409 48%, #010103 84%);
   color: #fff;
   font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 }
@@ -29,8 +29,8 @@
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 24% 70%, #ab38801f, transparent 34%),
-    radial-gradient(ellipse at 76% 31%, #5168f12c, transparent 33%);
+    radial-gradient(ellipse at 24% 70%, #ab388010, transparent 34%),
+    radial-gradient(ellipse at 76% 31%, #5168f116, transparent 33%);
 }
 
 .book-cover #coverParticles {
