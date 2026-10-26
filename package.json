@@ -5,7 +5,7 @@
   "description": "Ying 交易决策研究室：登录、卡密授权与日本蜡烛图学习工具",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "test:browser": "node --test tests/browser-auth.test.cjs"
+    "test:browser": "node --test tests/browser-auth.test.cjs tests/admin-dashboard.test.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

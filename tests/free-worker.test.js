@@ -66,6 +66,22 @@ test('a registrable account name does not grant message administrator access', a
   assert.equal(profile.data.user.canViewMessages, true);
 });
 
+test('dashboard and card generation require the configured administrator user ID', async () => {
+  const db = fakeDB(session());
+  const env = { DB: db, MESSAGE_ADMIN_USER_ID: '8' };
+  assert.equal((await call('/api/admin/dashboard?section=overview', { method: 'GET' }, env)).status, 403);
+  assert.equal((await call('/api/admin/activation-codes', { method: 'POST', body: JSON.stringify({ days: 30, count: 1 }) }, env)).status, 403);
+  assert.equal((await call('/api/admin/dashboard?section=users', { method: 'GET' }, { DB: fakeDB(null), MESSAGE_ADMIN_USER_ID: '7' })).status, 401);
+  env.MESSAGE_ADMIN_USER_ID = '7';
+  assert.equal((await call('/api/admin/dashboard?section=users&offset=0', { method: 'GET' }, env)).status, 200);
+  assert.equal((await call('/api/admin/dashboard?section=users&offset=-1', { method: 'GET' }, env)).status, 400);
+  assert.equal((await call('/api/admin/dashboard?section=unknown', { method: 'GET' }, env)).status, 400);
+  const generated = await call('/api/admin/activation-codes', { method: 'POST', body: JSON.stringify({ days: 30, count: 1 }) }, env);
+  assert.equal(generated.status, 200);
+  assert.equal(generated.data.codes.length, 1);
+  assert.equal(db.queries.some(sql => sql.startsWith('INSERT INTO activation_codes')), true);
+});
+
 test('changing a password revokes every existing session', async () => {
   const db = fakeDB(session());
   const result = await call('/api/auth/password', { method: 'POST', body: JSON.stringify({ password: 'new-password-123' }) }, { DB: db });

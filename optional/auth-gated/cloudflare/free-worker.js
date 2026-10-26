@@ -89,6 +89,13 @@ async function createSession(db, user) {
   await db.prepare("INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?, ?, ?)").bind(user.id, tokenHash, expires).run();
   return { token, expiresAt: expires };
 }
+async function recordLogin(db, userId, eventType) {
+  try {
+    await db.prepare("INSERT INTO login_events (user_id, event_type) VALUES (?, ?)").bind(userId, eventType).run();
+  } catch (error) {
+    console.error("login_event_write_failed", error);
+  }
+}
 async function authenticatedUser(request, db) {
   const token = requestToken(request);
   if (!token || !db) return null;
@@ -153,6 +160,7 @@ export default {
         const salt = randomToken(); const hash = await passwordHash(password, salt);
         const result = await env.DB.prepare("INSERT INTO users (email, password_hash, password_salt) VALUES (?, ?, ?)").bind(email, hash, salt).run();
         const user = { id: result.meta.last_row_id, email, entitlement_until: null }; const session = await createSession(env.DB, user);
+        await recordLogin(env.DB, user.id, "register");
         return json({ user: publicUser(user, env), token: session.token, expiresAt: session.expiresAt }, 201);
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
@@ -161,7 +169,8 @@ export default {
         const body = await request.json(); const email = String(body.email || "").trim().toLowerCase(); const password = String(body.password || "");
         const user = await env.DB.prepare("SELECT id, email, password_hash, password_salt, entitlement_until FROM users WHERE email = ?").bind(email).first();
         if (!user || (await passwordHash(password, user.password_salt)) !== user.password_hash) return json({ error: "invalid_credentials", message: "账号或密码不正确" }, 401);
-        const session = await createSession(env.DB, user); return json({ user: publicUser(user, env), token: session.token, expiresAt: session.expiresAt });
+        const session = await createSession(env.DB, user); await recordLogin(env.DB, user.id, "login");
+        return json({ user: publicUser(user, env), token: session.token, expiresAt: session.expiresAt });
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
     if (url.pathname === "/api/auth/password" && request.method === "POST") {
@@ -182,6 +191,49 @@ export default {
     if (url.pathname === "/api/admin/messages" && request.method === "GET") {
       const secret = request.headers.get("x-admin-secret") || ""; if (!env.ADMIN_SECRET || secret !== env.ADMIN_SECRET) return json({ error: "forbidden", message: "管理员权限不足" }, 403);
       const rows = await env.DB.prepare("SELECT m.id, m.message, m.created_at, u.email FROM messages m JOIN users u ON u.id = m.user_id ORDER BY m.id DESC LIMIT 500").all(); return json({ messages: rows.results || [] });
+    }
+    if (url.pathname === "/api/admin/dashboard" && request.method === "GET") {
+      const user = await authenticatedUser(request, env.DB);
+      if (!user) return authRequired(user);
+      if (!canViewMessages(user, env)) return json({ error: "forbidden", message: "仅管理员可查看后台" }, 403);
+      const section = url.searchParams.get("section") || "overview";
+      if (section === "overview") {
+        const summary = await env.DB.prepare(`SELECT
+          (SELECT COUNT(*) FROM users) AS users,
+          (SELECT COUNT(*) FROM users WHERE entitlement_until > ?) AS active_users,
+          (SELECT COUNT(*) FROM activation_codes) AS codes,
+          (SELECT COUNT(*) FROM code_redemptions) AS redemptions,
+          (SELECT COUNT(*) FROM login_events WHERE event_type = 'login') AS logins,
+          (SELECT COUNT(*) FROM desk_state) AS desk_synced,
+          (SELECT COUNT(*) FROM candle_reading) AS candle_synced,
+          (SELECT COUNT(*) FROM messages) AS messages`).bind(new Date().toISOString()).first();
+        return json({ summary });
+      }
+      const offset = Number(url.searchParams.get("offset") || 0);
+      if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000) return json({ error: "invalid_offset" }, 400);
+      const limit = 50;
+      const queries = {
+        users: `SELECT u.id, u.email, u.created_at, u.entitlement_until,
+          (SELECT MAX(created_at) FROM login_events WHERE user_id = u.id AND event_type = 'login') AS last_login,
+          (SELECT COUNT(*) FROM sessions WHERE user_id = u.id AND expires_at > ?) AS active_sessions,
+          d.updated_at AS desk_sync, c.updated_at AS candle_sync
+          FROM users u LEFT JOIN desk_state d ON d.user_id = u.id
+          LEFT JOIN candle_reading c ON c.user_id = u.id ORDER BY u.id DESC LIMIT ? OFFSET ?`,
+        codes: `SELECT id, days, max_redemptions, redeemed_count, expires_at, created_at
+          FROM activation_codes ORDER BY id DESC LIMIT ? OFFSET ?`,
+        redemptions: `SELECT r.id, r.redeemed_at, u.email, a.id AS code_id, a.days
+          FROM code_redemptions r JOIN users u ON u.id = r.user_id
+          JOIN activation_codes a ON a.id = r.code_id ORDER BY r.id DESC LIMIT ? OFFSET ?`,
+        logins: `SELECT l.id, l.created_at, l.event_type, u.email
+          FROM login_events l JOIN users u ON u.id = l.user_id ORDER BY l.id DESC LIMIT ? OFFSET ?`,
+        messages: `SELECT m.id, m.created_at, m.message, u.email
+          FROM messages m JOIN users u ON u.id = m.user_id ORDER BY m.id DESC LIMIT ? OFFSET ?`
+      };
+      if (!Object.hasOwn(queries, section)) return json({ error: "invalid_section" }, 400);
+      const statement = env.DB.prepare(queries[section]);
+      const rows = await (section === "users" ? statement.bind(new Date().toISOString(), limit + 1, offset) : statement.bind(limit + 1, offset)).all();
+      const items = rows.results || [];
+      return json({ items: items.slice(0, limit), nextOffset: items.length > limit ? offset + limit : null });
     }
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       const user = await authenticatedUser(request, env.DB); return user ? json({ user: publicUser(user, env) }) : authRequired(user);
@@ -256,10 +308,19 @@ export default {
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
     if (url.pathname === "/api/admin/activation-codes" && request.method === "POST") {
-      if (!env.ADMIN_SECRET || request.headers.get("x-admin-secret") !== env.ADMIN_SECRET) return json({ error: "forbidden" }, 403);
+      const user = await authenticatedUser(request, env.DB);
+      const secret = request.headers.get("x-admin-secret") || "";
+      if (!canViewMessages(user, env) && (!env.ADMIN_SECRET || secret !== env.ADMIN_SECRET)) return json({ error: "forbidden" }, 403);
       try {
-        const body = await request.json(); const days = Math.max(1, Math.min(3650, Number(body.days || 30))); const count = Math.max(1, Math.min(100, Number(body.count || 1))); const codes = [];
-        for (let i = 0; i < count; i += 1) { const code = "RONGHE-" + randomToken().slice(0, 12).toUpperCase(); await env.DB.prepare("INSERT INTO activation_codes (code_hash, days) VALUES (?, ?)").bind(await sha256(code), days).run(); codes.push(code); }
+        const body = await request.json(); const days = Number(body.days ?? 30); const count = Number(body.count ?? 1);
+        if (!Number.isInteger(days) || days < 1 || days > 3650 || !Number.isInteger(count) || count < 1 || count > 100) return json({ error: "invalid_code_request", message: "有效天数须为 1–3650，数量须为 1–100" }, 400);
+        const codes = [], statements = [];
+        for (let i = 0; i < count; i += 1) {
+          const code = "RONGHE-" + randomToken().slice(0, 12).toUpperCase();
+          statements.push(env.DB.prepare("INSERT INTO activation_codes (code_hash, days) VALUES (?, ?)").bind(await sha256(code), days));
+          codes.push(code);
+        }
+        await env.DB.batch(statements);
         return json({ codes, days });
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
