@@ -166,9 +166,21 @@ async function createSession(db, user) {
   await db.prepare("INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?, ?, ?)").bind(user.id, tokenHash, expires).run();
   return { token, expiresAt: expires };
 }
-async function recordLogin(db, userId, eventType) {
+function visitorIp(request) {
+  const value = (request.headers.get("cf-connecting-ipv6") || request.headers.get("cf-connecting-ip") || "").trim();
+  if (value.length > 45) return null;
+  if (/^(?:0|[1-9]\d{0,2})(?:\.(?:0|[1-9]\d{0,2})){3}$/.test(value)) {
+    return value.split(".").every(part => Number(part) <= 255) ? value : null;
+  }
+  if (value.includes(":") && /^[\da-f:.]+$/i.test(value)) {
+    try { return new URL("http://[" + value + "]/").hostname.slice(1, -1); } catch (_) {}
+  }
+  return null;
+}
+async function recordLogin(db, userId, eventType, request) {
   try {
-    await db.prepare("INSERT INTO login_events (user_id, event_type) VALUES (?, ?)").bind(userId, eventType).run();
+    await db.prepare("INSERT INTO login_events (user_id, event_type, ip_address) VALUES (?, ?, ?)")
+      .bind(userId, eventType, visitorIp(request)).run();
   } catch (error) {
     console.error("login_event_write_failed", error);
   }
@@ -244,7 +256,7 @@ export default {
         const salt = randomToken(); const hash = await passwordHash(password, salt);
         const result = await env.DB.prepare("INSERT INTO users (email, password_hash, password_salt) VALUES (?, ?, ?)").bind(email, hash, salt).run();
         const user = { id: result.meta.last_row_id, email, entitlement_until: null }; const session = await createSession(env.DB, user);
-        await recordLogin(env.DB, user.id, "register");
+        await recordLogin(env.DB, user.id, "register", request);
         return json({ user: publicUser(user, env), token: session.token, expiresAt: session.expiresAt }, 201);
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
@@ -253,7 +265,7 @@ export default {
         const body = await request.json(); const email = String(body.email || "").trim().toLowerCase(); const password = String(body.password || "");
         const user = await env.DB.prepare("SELECT id, email, password_hash, password_salt, entitlement_until FROM users WHERE email = ?").bind(email).first();
         if (!user || (await passwordHash(password, user.password_salt)) !== user.password_hash) return json({ error: "invalid_credentials", message: "账号或密码不正确" }, 401);
-        const session = await createSession(env.DB, user); await recordLogin(env.DB, user.id, "login");
+        const session = await createSession(env.DB, user); await recordLogin(env.DB, user.id, "login", request);
         return json({ user: publicUser(user, env), token: session.token, expiresAt: session.expiresAt });
       } catch (error) { return json({ error: "invalid_request", message: error.message }, 400); }
     }
@@ -308,7 +320,7 @@ export default {
         redemptions: `SELECT r.id, r.redeemed_at, u.email, a.id AS code_id, a.days
           FROM code_redemptions r JOIN users u ON u.id = r.user_id
           JOIN activation_codes a ON a.id = r.code_id ORDER BY r.id DESC LIMIT ? OFFSET ?`,
-        logins: `SELECT l.id, l.created_at, l.event_type, u.email
+        logins: `SELECT l.id, l.created_at, l.event_type, l.ip_address, u.email
           FROM login_events l JOIN users u ON u.id = l.user_id ORDER BY l.id DESC LIMIT ? OFFSET ?`,
         messages: `SELECT m.id, m.created_at, m.message, u.email
           FROM messages m JOIN users u ON u.id = m.user_id ORDER BY m.id DESC LIMIT ? OFFSET ?`

@@ -82,6 +82,50 @@ test('dashboard and card generation require the configured administrator user ID
   assert.equal(db.queries.some(sql => sql.startsWith('INSERT INTO activation_codes')), true);
 });
 
+test('successful account access records the Cloudflare visitor IP for administrator review', async () => {
+  let storedUser = null;
+  const events = [];
+  const db = {
+    prepare(sql) {
+      let values = [];
+      return {
+        bind(...args) { values = args; return this; },
+        async first() {
+          if (sql.startsWith('SELECT id FROM users')) return storedUser ? { id: 7 } : null;
+          if (sql.startsWith('SELECT id, email, password_hash')) return storedUser;
+          if (sql.includes('FROM sessions s')) return session();
+          return null;
+        },
+        async all() {
+          if (sql.includes('FROM login_events l')) {
+            assert.match(sql, /l\.ip_address/);
+            return { results: events.map((event, index) => ({ id: index + 1, email: storedUser.email, event_type: event[1], ip_address: event[2], created_at: '2026-10-27 00:00:00' })) };
+          }
+          return { results: [] };
+        },
+        async run() {
+          if (sql.startsWith('INSERT INTO users')) {
+            storedUser = { id: 7, email: values[0], password_hash: values[1], password_salt: values[2], entitlement_until: null };
+            return { meta: { last_row_id: 7 } };
+          }
+          if (sql.startsWith('INSERT INTO login_events')) events.push(values);
+          return { meta: { changes: 1 } };
+        }
+      };
+    }
+  };
+  const env = { DB: db, MESSAGE_ADMIN_USER_ID: '7' };
+  const body = JSON.stringify({ email: '1234567890', password: 'password123' });
+  assert.equal((await call('/api/auth/register', { method: 'POST', body, headers: { 'cf-connecting-ip': '203.0.113.15' } }, env)).status, 201);
+  assert.equal((await call('/api/auth/login', { method: 'POST', body, headers: { 'cf-connecting-ip': '198.51.100.3', 'cf-connecting-ipv6': '2001:db8::1' } }, env)).status, 200);
+  assert.equal((await call('/api/auth/login', { method: 'POST', body, headers: { 'cf-connecting-ip': '203.0.113.15,<script>' } }, env)).status, 200);
+  assert.deepEqual(events.map(event => event.slice(1)), [['register', '203.0.113.15'], ['login', '2001:db8::1'], ['login', null]]);
+  const dashboard = await call('/api/admin/dashboard?section=logins', { method: 'GET' }, env);
+  assert.equal(dashboard.status, 200);
+  assert.equal(dashboard.data.items[1].ip_address, '2001:db8::1');
+  assert.equal((await call('/api/admin/dashboard?section=logins', { method: 'GET' }, { DB: db, MESSAGE_ADMIN_USER_ID: '8' })).status, 403);
+});
+
 test('only an administrator can delete a code with no redemptions', async () => {
   const deleted = [];
   const db = {

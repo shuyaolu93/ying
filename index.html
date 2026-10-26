@@ -149,7 +149,7 @@
   
     .header-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.site-switcher{display:flex;gap:6px;align-items:center}.site-switcher a{display:inline-flex;align-items:center;min-height:32px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font:700 .68rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.03em;text-decoration:none;transition:.15s}.site-switcher a:hover,.site-switcher a.active{border-color:var(--red);color:var(--red);background:#fffaf0}.book-cover-inner .cover-switch{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.book-cover-inner .cover-switch a{color:#776f64;font-size:.72rem;text-decoration:none;border-bottom:1px solid #b7a78d;padding-bottom:2px}
 </style>
-<link rel="stylesheet" href="assets/home-cover.css?v=6" />
+<link rel="stylesheet" href="assets/home-cover.css?v=7" />
 </head>
 <body class="auth-pending">
   <main class="shell">
@@ -227,6 +227,7 @@
           <label>账号<input id="coverEmail" type="text" autocomplete="username" inputmode="numeric" placeholder="邮箱或 8 位以上数字" required></label>
           <label>密码<input id="coverPassword" type="password" autocomplete="current-password" placeholder="至少 8 位" required></label>
           <div class="cover-actions"><button class="cover-primary" type="submit">登录</button><button class="cover-secondary" type="button" id="coverRegister">注册账号</button></div>
+          <p class="cover-ip-note">登录或注册时会记录 IP，仅供管理员查看账号登录记录。</p>
           <div class="redeem-inline"><label>卡密<input id="coverCode" type="text" autocomplete="off" placeholder="兑换卡密"></label><button type="button" id="coverRedeem">兑换</button></div>
           <button type="button" id="coverAccount" style="display:none">账户设置</button>
           <div class="cover-note" id="coverNote" role="status" aria-live="polite"></div>
@@ -239,6 +240,6 @@
   <script src="core/risk-engine.js"></script>
   <script src="app.js?v=2.6.7-market-page"></script>
   <script src="assets/home-cover-webgl.js?v=6"></script>
-  <script src="optional/auth-gated/auth.js?v=1.3.5-mobile-cover"></script>
+  <script src="optional/auth-gated/auth.js?v=1.3.6-login-ip"></script>
 </body>
 </html>

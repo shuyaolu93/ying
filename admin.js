@@ -67,7 +67,7 @@
       case 'users': return [item.email, date(item.entitlement_until), date(item.last_login), item.active_sessions, date(item.desk_sync), date(item.candle_sync)];
       case 'codes': return ['#' + item.id, item.days + ' 天', item.redeemed_count + ' / ' + item.max_redemptions, date(item.created_at), date(item.expires_at)];
       case 'redemptions': return [item.email, '#' + item.code_id, item.days + ' 天', date(item.redeemed_at)];
-      case 'logins': return [item.email, item.event_type === 'register' ? '注册' : '登录', date(item.created_at)];
+      case 'logins': return [item.email, item.event_type === 'register' ? '注册' : '登录', item.ip_address, date(item.created_at)];
       case 'messages': return [item.email, item.message, date(item.created_at)];
       default: return [];
     }

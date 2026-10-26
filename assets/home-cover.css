@@ -275,6 +275,7 @@
 .book-cover .cover-actions .cover-primary { border: 1px solid #8d78d3; background: linear-gradient(110deg, #6669bc, #9c62ad); color: #fff; }
 .book-cover .cover-actions .cover-secondary,
 .book-cover .redeem-inline button { border: 1px solid #5e5871; background: #242337; color: #f2f0fa; }
+.book-cover .cover-ip-note { margin: 12px 0 0; color: #aaa6ba; font-size: 12px; line-height: 1.6; }
 .book-cover .redeem-inline { border-top-color: #474354; }
 .book-cover .cover-note { color: #ff9f9b; }
 
@@ -378,6 +379,7 @@
   .book-cover .cover-actions button { min-height: 46px; }
   .book-cover .cover-actions .cover-primary { border: 0; background: #3b3934; color: #fff; }
   .book-cover .cover-actions .cover-secondary { border: 1px solid #cbc7bd; background: #fff; color: #4c4942; }
+  .book-cover .cover-ip-note { color: #77736a; }
   .book-cover .redeem-inline { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2dfd7; }
   .book-cover .redeem-inline button { min-height: 46px; border: 1px solid #cbc7bd; background: #eeece7; color: #4c4942; }
   .book-cover .cover-note { min-height: 26px; margin-top: 14px; font-size: 13px; }

@@ -43,6 +43,10 @@ test('only the administrator can open the dashboard, read safe records and gener
       const section = url.searchParams.get('section');
       data = { nextOffset: null, items: section === 'messages'
         ? [{ id: 1, email: 'reader@example.test', message: '<img src=x onerror=alert(1)>', created_at: '2026-10-26 03:00:00' }]
+        : section === 'logins' ? [
+          { id: 2, email: 'reader@example.test', event_type: 'login', ip_address: '2001:db8::1', created_at: '2026-10-27 03:00:00' },
+          { id: 1, email: '1234567890', event_type: 'login', ip_address: null, created_at: '2026-10-26 03:00:00' }
+        ]
         : section === 'users' ? [{ id: 1, email: 'reader@example.test', entitlement_until: null, active_sessions: 0 }]
           : section === 'codes' ? [...(unusedCodePresent ? [{ id: 10, days: 30, redeemed_count: 0, max_redemptions: 1 }] : []), { id: 11, days: 30, redeemed_count: 1, max_redemptions: 1 }]
           : [] };
@@ -67,6 +71,9 @@ test('only the administrator can open the dashboard, read safe records and gener
   assert.equal(await page.locator('#stats .stat').count(), 8);
   assert.equal(await page.locator('#messagesSection img').count(), 0);
   assert.match(await page.locator('#messagesSection tbody').textContent(), /<img src=x onerror=alert\(1\)>/);
+  assert.deepEqual(await page.locator('#loginsSection thead th').allTextContents(), ['账号', '事件', '登录 IP', '时间']);
+  assert.match(await page.locator('#loginsSection tbody').textContent(), /2001:db8::1/);
+  assert.match(await page.locator('#loginsSection tbody tr').nth(1).textContent(), /—/);
   assert.equal(await page.getByRole('button', { name: '删除卡密 #10' }).count(), 1);
   assert.equal(await page.getByRole('button', { name: '删除卡密 #11' }).count(), 0);
   page.once('dialog', dialog => dialog.accept());
