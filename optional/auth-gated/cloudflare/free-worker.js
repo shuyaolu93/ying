@@ -360,6 +360,34 @@ export default {
         return json({ ok: true, revision: revision + 1, updatedAt: now });
       } catch (error) { return json({ error: "state_save_failed", message: error.message }, 400); }
     }
+    if (url.pathname === "/api/market/notes" && (request.method === "GET" || request.method === "PUT")) {
+      const user = await authenticatedUser(request, env.DB);
+      if (!user) return authRequired(user);
+      if (!entitlementRequired(user)) return json({ error: "entitlement_required", message: "请先兑换有效卡密" }, 403);
+      if (!env.DB) return json({ error: "database_not_configured" }, 503);
+      if (request.method === "GET") {
+        const row = await env.DB.prepare("SELECT payload, revision, updated_at FROM market_notes WHERE user_id = ?").bind(user.id).first();
+        return json(row ? { note: JSON.parse(row.payload), revision: row.revision, updatedAt: row.updated_at } : { note: null, revision: 0 });
+      }
+      try {
+        const body = await request.json();
+        const revision = Number(body.revision);
+        const note = body.note;
+        const fields = note && note.fields;
+        const allowed = new Set(["hotspotTitle", "hotspotPublished", "hotspotSourceName", "hotspotSourceUrl", "hotspotFacts", "hotspotPath", "hotspotDirection", "hotspotWatch", "hotspotCounter", "hotspotOutput"]);
+        if (!Number.isInteger(revision) || revision < 0 || !note || typeof note !== "object" || Array.isArray(note) ||
+            !fields || typeof fields !== "object" || Array.isArray(fields) ||
+            Object.keys(fields).some(key => !allowed.has(key) || typeof fields[key] !== "string")) return json({ error: "invalid_note" }, 400);
+        const payload = JSON.stringify({ updatedAt: String(note.updatedAt || ""), fields });
+        if (payload.length > 12000) return json({ error: "note_too_large", message: "热点记录超过保存上限" }, 413);
+        const now = new Date().toISOString();
+        const result = revision === 0
+          ? await env.DB.prepare("INSERT INTO market_notes (user_id, payload, revision, updated_at) VALUES (?, ?, 1, ?) ON CONFLICT(user_id) DO NOTHING").bind(user.id, payload, now).run()
+          : await env.DB.prepare("UPDATE market_notes SET payload = ?, revision = revision + 1, updated_at = ? WHERE user_id = ? AND revision = ?").bind(payload, now, user.id, revision).run();
+        if (!result.meta.changes) return json({ error: "revision_conflict", message: "另一台设备已更新热点记录，请重新加载" }, 409);
+        return json({ ok: true, revision: revision + 1, updatedAt: now });
+      } catch (error) { return json({ error: "note_save_failed", message: error.message }, 400); }
+    }
     if (url.pathname === "/api/candle/reading" && (request.method === "GET" || request.method === "PUT")) {
       const user = await authenticatedUser(request, env.DB);
       if (!user) return authRequired(user);

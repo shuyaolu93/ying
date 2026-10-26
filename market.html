@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://ronghe-risk-free.shuyaolu93.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="theme-color" content="#f3efe5">
+  <meta name="description" content="市场热点解读：查看官方动态，核实事实并记录影响路径与反向证据。">
+  <title>盈 · 市场热点解读</title>
+  <style>
+    :root{--ink:#28211b;--paper:#f3efe5;--panel:#f8f5ed;--muted:#776f64;--line:#d9d1c2;--red:#b63b2b}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 "Songti SC","STSong","PingFang SC",serif}
+    body::before{content:"";display:block;height:10px;background:#181511}.shell{width:min(1100px,100%);margin:0 auto;padding:0 24px 48px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:86px;border-bottom:1px solid var(--line);margin-bottom:22px}.brand{display:flex;align-items:center;gap:12px}.mark{display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--ink);color:var(--red);font-size:22px}.brand h1{font-size:1.4rem;margin:0;line-height:1.2}.brand p{color:var(--muted);font:11px ui-monospace,monospace;letter-spacing:.12em;margin:4px 0 0}.site-switcher{display:flex;flex-wrap:wrap;gap:6px}.site-switcher a{display:inline-flex;align-items:center;min-height:36px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;color:var(--muted);text-decoration:none;font:700 12px "PingFang SC",sans-serif}.site-switcher a.active,.site-switcher a:hover{color:var(--red);border-color:var(--red)}.card{border:1px solid var(--line);background:var(--panel);padding:24px}.role-title{display:flex;align-items:center;gap:10px}.role-title h2{margin:0;font-size:1.5rem}.num{display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--red);color:var(--red);font-weight:700;font-size:15px}.market-panel{margin:0}.primary{font:700 14px "PingFang SC",sans-serif;cursor:pointer}.market-form input,.market-form textarea{font-size:16px!important}.market-news button,.market-actions button,.market-heading button{font:700 12px "PingFang SC",sans-serif;min-height:38px}.market-output{width:100%;margin-top:10px;border:1px solid var(--line);background:#fffdf7;padding:12px;font:14px/1.6 "PingFang SC",sans-serif;resize:vertical}.market-status{line-height:1.6}footer{padding:22px 0;color:var(--muted);font-size:12px;text-align:center}.access-state{max-width:520px;margin:20vh auto;padding:28px;border:1px solid var(--line);background:var(--panel);text-align:center}.access-state a{display:inline-block;padding:10px 16px;border:1px solid var(--red);color:var(--red);text-decoration:none}.auth-pending .shell{visibility:hidden}.auth-blocked .shell{display:none}.auth-pending::after{content:"正在验证账号并加载热点页面…";position:fixed;inset:0;display:grid;place-items:center;background:var(--paper);color:var(--muted);font:15px "PingFang SC",sans-serif}.auth-blocked .access-state{display:block}.access-state[hidden]{display:none}.storage-state{margin:0 0 12px;color:var(--muted);font-size:13px}
+    @media(max-width:700px){.shell{padding:0 12px 28px}.topbar{align-items:flex-start;flex-direction:column;padding:16px 0;gap:12px}.site-switcher{width:100%}.site-switcher a{flex:1;justify-content:center;padding:6px 4px}.card{padding:16px}.role-title h2{font-size:1.25rem}}
+  </style>
+  <style>
+    .market-panel{scroll-margin-top:76px}.market-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.market-heading p{margin:6px 0 0;color:var(--muted);font-size:.76rem}.market-heading button,.market-actions button,.market-news button{border:1px solid var(--line);background:#fffdf7;color:var(--ink);padding:9px 12px;cursor:pointer}.market-heading button:hover,.market-actions button:hover,.market-news button:hover{border-color:var(--red);color:var(--red)}.market-status{margin:10px 0;color:var(--muted);font-size:.72rem}.market-news-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.market-news{min-width:0;border:1px solid var(--line);background:#f8f5ed;padding:12px}.market-news h3{margin:0 0 6px;font-size:.85rem;line-height:1.5}.market-news-meta{display:block;margin-bottom:8px;color:var(--muted);font-size:.69rem}.market-news a{color:var(--red);font-size:.72rem;overflow-wrap:anywhere}.market-news button{margin-left:8px;font-size:.72rem}.market-form{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}.market-form h3{margin:0 0 5px;font:700 1rem "Songti SC",serif}.market-form p{margin:0 0 12px;color:var(--muted);font-size:.74rem}.market-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.market-form label{display:block;min-width:0;font-size:.74rem;color:var(--muted)}.market-form input:not([type=radio]),.market-form textarea{display:block;width:100%;margin-top:5px;border:1px solid var(--line);background:#fffdf7;padding:10px;color:var(--ink);font:inherit}.market-form textarea{min-height:74px;resize:vertical}.market-form .wide{grid-column:1/-1}.market-form fieldset{min-width:0;margin:0;border:1px solid var(--line);padding:10px;background:#fffdf7}.market-form legend{color:var(--muted);font-size:.74rem}.market-choices{display:flex;flex-wrap:wrap;gap:8px;margin:7px 0 0}.market-choices label{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);padding:7px 10px;background:#f8f5ed;color:var(--ink)}.market-choices input{accent-color:var(--red)}.market-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}.market-actions .primary{background:var(--ink);border-color:var(--ink);color:white}.market-output{min-height:165px!important;line-height:1.6}.market-empty{grid-column:1/-1;color:var(--muted);font-size:.75rem;padding:12px;border:1px dashed var(--line)}@media(max-width:700px){.market-news-list,.market-form-grid{grid-template-columns:1fr}.market-form .wide{grid-column:auto}.market-panel{scroll-margin-top:116px}}
+  </style>
+</head>
+<body class="auth-pending">
+  <main class="shell">
+    <header class="topbar"><div class="brand"><span class="mark">热</span><div><h1>市场热点解读</h1><p>MARKET RESEARCH · 事实先于判断</p></div></div><nav class="site-switcher" aria-label="网页切换"><a href="./index.html">交易决策研究室</a><a class="active" href="./market.html">市场热点</a><a href="./candle.html">日本蜡烛图</a></nav></header>
+    <p class="storage-state" id="marketStorageStatus" role="status" aria-live="polite">正在加载研究记录…</p>
+    <section class="card market-panel" id="marketHotspots">
+      <div class="role-title"><span class="num">热</span><h2>市场热点解读</h2></div>
+      <div class="market-heading"><p>浏览近期官方数据动态，打开原文核实后做结构化解读。这里展示的是发布时间排序，不是市场热度排名。</p><button id="refreshHotspots" type="button">刷新官方动态</button></div>
+      <p class="market-status" id="hotspotNewsStatus" role="status" aria-live="polite">登录后加载官方动态。</p>
+      <div id="hotspotNewsList" class="market-news-list"><div class="market-empty">正在等待数据…</div></div>
+      <form id="hotspotForm" class="market-form">
+        <h3>解读一个热点</h3><p>可从上方选取，也可填写其他可信来源。解读仅整理证据与可能的影响路径，不自动给出买卖结论。</p>
+        <div class="market-form-grid">
+          <label>热点标题<input id="hotspotTitle" type="text" maxlength="180" placeholder="发生了什么？" required></label>
+          <label>发布日期<input id="hotspotPublished" type="date" required></label>
+          <label>来源名称<input id="hotspotSourceName" type="text" maxlength="80" placeholder="例如：国家统计局" required></label>
+          <label>原文链接<input id="hotspotSourceUrl" type="url" maxlength="500" placeholder="https://..." required></label>
+          <label class="wide">已核实事实<textarea id="hotspotFacts" maxlength="1200" placeholder="打开原文后写下可核对的事实、数据和统计期；不要只重复标题。" required></textarea></label>
+          <fieldset class="wide"><legend>可能的影响路径</legend><div class="market-choices"><label><input type="radio" name="hotspotPath" value="demand" required>需求与收入</label><label><input type="radio" name="hotspotPath" value="supply">供给与成本</label><label><input type="radio" name="hotspotPath" value="liquidity">流动性与融资</label><label><input type="radio" name="hotspotPath" value="valuation">估值与风险偏好</label><label><input type="radio" name="hotspotPath" value="unknown">暂不明确</label></div></fieldset>
+          <fieldset class="wide"><legend>方向判断</legend><div class="market-choices"><label><input type="radio" name="hotspotDirection" value="unknown" checked>待验证</label><label><input type="radio" name="hotspotDirection" value="positive">可能偏正面</label><label><input type="radio" name="hotspotDirection" value="negative">可能偏负面</label></div></fieldset>
+          <label class="wide">需要观察的指标或事件<textarea id="hotspotWatch" maxlength="600" placeholder="例如：订单、利润率、政策落地或下次数据发布日期" required></textarea></label>
+          <label class="wide">反向证据与不确定性<textarea id="hotspotCounter" maxlength="600" placeholder="什么情况会推翻上面的解释？" required></textarea></label>
+        </div>
+        <div class="market-actions"><button class="primary" type="submit">生成解读</button><button id="copyHotspot" type="button" disabled>复制解读</button><span class="market-status" id="hotspotNotice" role="status" aria-live="polite"></span></div>
+        <textarea id="hotspotOutput" class="market-output" readonly aria-label="市场热点解读结果" placeholder="完成核实与分析后，解读会显示在这里。"></textarea>
+      </form>
+    </section>
+
+
+    <footer>按来源发布时间展示官方动态；解读为个人研究记录，不构成买卖建议。</footer>
+  </main>
+  <div class="access-state" id="marketAccess" hidden><h2>市场热点解读</h2><p id="marketAccessMessage">请先登录并兑换有效卡密。</p><a href="./index.html">前往登录与兑换</a></div>
+  <script src="market-hotspots.js?v=2"></script>
+  <script src="optional/auth-gated/market-gate.js?v=1"></script>
+</body>
+</html>

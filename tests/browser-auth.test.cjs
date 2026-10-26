@@ -21,6 +21,7 @@ async function openPage(t, options = {}) {
   t.after(() => context.close());
   if (options.token) await context.addInitScript(token => localStorage.setItem('rongheAuthTokenV1', token), options.token);
   if (options.readingData) await context.addInitScript(data => localStorage.setItem('ying-candle-reading-v1-account-1', JSON.stringify(data)), options.readingData);
+  if (options.legacyMarketDraft) await context.addInitScript(data => localStorage.setItem('tradeDecisionCardDraftV3:account-1', JSON.stringify(data)), options.legacyMarketDraft);
   const page = await context.newPage();
   const errors = [];
   const calls = [];
@@ -41,6 +42,7 @@ async function openPage(t, options = {}) {
   let user = options.token === 'valid-token'
     ? { id: 1, email: options.owner ? '1234567890' : 'reader@example.test', active: true, entitlementUntil: '2099-01-01T00:00:00Z', canViewMessages: Boolean(options.owner) }
     : null;
+  const marketNotes = new Map();
   await page.route('https://ronghe-risk-free.shuyaolu93.workers.dev/**', async route => {
     const pathname = new URL(route.request().url()).pathname;
     calls.push(pathname);
@@ -65,6 +67,17 @@ async function openPage(t, options = {}) {
         { title: '制造业 PMI 数据发布', source: '国家统计局 · 最新发布', url: 'https://www.stats.gov.cn/sj/zxfb/example.html', publishedAt: new Date().toISOString() },
         { title: '<img src=x onerror=alert(1)>', source: '国家统计局 · 数据解读', url: 'https://www.stats.gov.cn/sj/sjjd/example.html', publishedAt: new Date().toISOString() }
       ] };
+    } else if (pathname === '/api/market/notes') {
+      const key = user?.id;
+      const saved = marketNotes.get(key);
+      if (route.request().method() === 'GET') data = { note: saved?.note || null, revision: saved?.revision || 0 };
+      else {
+        const body = route.request().postDataJSON();
+        if (body.revision !== (saved?.revision || 0)) { status = 409; data = { message: 'revision_conflict' }; }
+        else { marketNotes.set(key, { note: body.note, revision: body.revision + 1 }); data = { ok: true, revision: body.revision + 1 }; }
+      }
+    } else if (pathname === '/api/desk/state' && route.request().method() === 'GET') {
+      data = { state: options.legacyMarketDraft && user?.id === 1 ? { draft: options.legacyMarketDraft, history: [] } : null, revision: 0 };
     } else if (pathname === '/api/messages' && route.request().method() === 'GET') {
       if (user?.email !== '1234567890') { status = 403; data = { message: '禁止访问' }; }
       else data = { messages: [{ email: '<img src=x onerror=alert(1)>@example.test', message: '<script>alert(1)</script>' }] };
@@ -88,7 +101,7 @@ async function openPage(t, options = {}) {
     headers: { 'access-control-allow-origin': 'https://ying.test' },
     body: JSON.stringify({ patterns: options.patterns || [{ id: 'intro-test', ch: 'ch01', cn: '蜡烛图入门', en: 'Introduction', kind: '学习', sig: '中性', desc: '测试条目', def: '测试定义', note: '测试要点', lesson: true }], schematics: {} })
   }));
-  await page.goto(`https://ying.test/${options.candle ? 'candle.html' : ''}`);
+  await page.goto(`https://ying.test/${options.candle ? 'candle.html' : options.market ? 'market.html' : ''}`);
   return { page, calls };
 }
 
@@ -169,7 +182,7 @@ test('valuation requires real inputs and hold or sell summaries do not require a
 });
 
 test('market update can be interpreted with evidence and is cleared between accounts', async t => {
-  const { page } = await openPage(t, { token: 'valid-token' });
+  const { page } = await openPage(t, { token: 'valid-token', market: true });
   await page.locator('.shell').waitFor({ state: 'visible' });
   await page.locator('#hotspotNewsList .market-news').first().waitFor();
   assert.equal(await page.locator('#hotspotNewsList img').count(), 0);
@@ -183,10 +196,13 @@ test('market update can be interpreted with evidence and is cleared between acco
   assert.match(await page.locator('#hotspotOutput').inputValue(), /可能的影响路径：需求与收入/);
   assert.match(await page.locator('#hotspotOutput').inputValue(), /原文：https:\/\/www\.stats\.gov\.cn/);
   await page.waitForFunction(() => {
-    const raw = localStorage.getItem('tradeDecisionCardDraftV3:account-1');
-    const draft = raw && JSON.parse(raw);
-    return draft?.form?.some(item => item.id === 'hotspotOutput' && item.value.includes('需求与收入'));
+    const raw = localStorage.getItem('yingMarketDraftV1:account-1');
+    const note = raw && JSON.parse(raw);
+    return note?.fields?.hotspotOutput?.includes('需求与收入');
   });
+  await page.waitForFunction(() => document.getElementById('marketStorageStatus').textContent.includes('按账号同步'));
+  await page.locator('.site-switcher a[href="./index.html"]').click();
+  assert.equal(await page.locator('#marketHotspots').count(), 0);
   await page.locator('#headerLogout').click();
   await page.locator('#bookCover').waitFor({ state: 'visible' });
   await page.locator('#coverEmail').fill('new-reader@example.test');
@@ -196,8 +212,34 @@ test('market update can be interpreted with evidence and is cleared between acco
   await page.locator('#coverCode').fill('TEST-CODE');
   await page.locator('#coverRedeem').click();
   await page.locator('.shell').waitFor({ state: 'visible' });
+  await page.locator('.site-switcher a[href="./market.html"]').click();
+  await page.locator('.shell').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#hotspotTitle').inputValue(), '');
   assert.equal(await page.locator('#hotspotOutput').inputValue(), '');
+});
+
+test('old market draft is carried into the new page and old link redirects', async t => {
+  const legacyMarketDraft = { schemaVersion: 6, createdAt: '2026-10-25T12:00:00Z', form: [
+    { id: 'hotspotTitle', type: 'text', value: '旧热点记录' },
+    { id: 'hotspotFacts', type: 'textarea', value: '这是以前核实过的事实' },
+    { id: 'desk-field-15', type: 'radio', value: 'demand', checked: true },
+    { id: 'hotspotOutput', type: 'textarea', value: '之前生成的解读' }
+  ] };
+  const { page } = await openPage(t, { token: 'valid-token', market: true, legacyMarketDraft });
+  await page.locator('.shell').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#hotspotTitle').inputValue(), '旧热点记录');
+  assert.equal(await page.locator('#hotspotOutput').inputValue(), '之前生成的解读');
+  assert.equal(await page.locator('[name="hotspotPath"][value="demand"]').isChecked(), true);
+  await page.goto('https://ying.test/#marketHotspots');
+  await page.waitForURL('https://ying.test/market.html');
+  assert.equal(await page.locator('#hotspotTitle').inputValue(), '旧热点记录');
+});
+
+test('market page stays hidden without an active account', async t => {
+  const { page } = await openPage(t, { market: true });
+  assert.equal(await page.locator('#marketAccess').isVisible(), true);
+  assert.equal(await page.locator('.shell').isVisible(), false);
+  assert.equal(await page.locator('#hotspotNewsList .market-news').count(), 0);
 });
 
 test('login, redeem, personal center and logout remain usable', async t => {

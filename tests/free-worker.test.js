@@ -170,6 +170,51 @@ test('market updates require an active account and expose only verified official
   assert.equal(unavailable.status, 503);
 });
 
+test('market notes are private, bounded and revision checked', async () => {
+  let currentUser = session();
+  let stored = null;
+  const db = {
+    prepare(sql) {
+      let values = [];
+      return {
+        bind(...args) { values = args; return this; },
+        async first() {
+          if (sql.includes('FROM sessions s')) return currentUser;
+          if (sql.includes('FROM market_notes')) return stored?.userId === values[0] ? stored : null;
+          return null;
+        },
+        async run() {
+          if (sql.startsWith('INSERT INTO market_notes')) {
+            if (stored) return { meta: { changes: 0 } };
+            stored = { userId: values[0], payload: values[1], revision: 1, updated_at: values[2] };
+            return { meta: { changes: 1 } };
+          }
+          if (sql.startsWith('UPDATE market_notes')) {
+            if (stored?.userId !== values[2] || stored.revision !== values[3]) return { meta: { changes: 0 } };
+            stored = { userId: values[2], payload: values[0], revision: stored.revision + 1, updated_at: values[1] };
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        }
+      };
+    }
+  };
+  const env = { DB: db };
+  const note = { updatedAt: new Date().toISOString(), fields: { hotspotTitle: '旧热点', hotspotOutput: '解读' } };
+  assert.equal((await call('/api/market/notes', { method: 'GET' }, env)).data.note, null);
+  assert.equal((await call('/api/market/notes', { method: 'PUT', body: JSON.stringify({ revision: 0, note }) }, env)).status, 200);
+  assert.equal((await call('/api/market/notes', { method: 'GET' }, env)).data.note.fields.hotspotTitle, '旧热点');
+  assert.equal((await call('/api/market/notes', { method: 'PUT', body: JSON.stringify({ revision: 0, note }) }, env)).status, 409);
+  assert.equal((await call('/api/market/notes', { method: 'PUT', body: JSON.stringify({ revision: 1, note: { ...note, fields: { password: 'secret' } } }) }, env)).status, 400);
+  assert.equal((await call('/api/market/notes', { method: 'PUT', body: JSON.stringify({ revision: 1, note: { ...note, fields: { hotspotFacts: 'x'.repeat(12001) } } }) }, env)).status, 413);
+  currentUser = session({ id: 8 });
+  assert.equal((await call('/api/market/notes', { method: 'GET' }, env)).data.note, null);
+  currentUser = session({ entitlement_until: null });
+  assert.equal((await call('/api/market/notes', { method: 'GET' }, env)).status, 403);
+  currentUser = null;
+  assert.equal((await call('/api/market/notes', { method: 'GET' }, env)).status, 401);
+});
+
 test('candle reading is private to its account and uses revision checks', async () => {
   let currentUser = session();
   let stored = null;
