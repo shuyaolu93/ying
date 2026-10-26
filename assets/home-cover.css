@@ -11,7 +11,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   isolation: isolate;
-  background: radial-gradient(ellipse at 50% 58%, #090913 0%, #040409 48%, #010103 84%);
+  background: #02060b url("night-sky-v1.png") center bottom / cover no-repeat;
   color: #fff;
   font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 }
@@ -29,13 +29,23 @@
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 24% 70%, #ab388010, transparent 34%),
-    radial-gradient(ellipse at 76% 31%, #5168f116, transparent 33%);
+    linear-gradient(180deg, #0103073d 0%, #03040b70 48%, #01030761 100%),
+    radial-gradient(ellipse at 50% 48%, #02040980, transparent 57%);
 }
 
 .book-cover #coverParticles {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: .18;
+  pointer-events: none;
+}
+
+.book-cover #coverMeteors {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -265,6 +275,7 @@
   }
   .book-cover::before,
   .book-cover #coverParticles,
+  .book-cover #coverMeteors,
   .book-cover .cover-pointer-glow,
   .book-cover .cover-bottom,
   .book-cover .cover-intro { display: none; }

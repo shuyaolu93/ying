@@ -112,6 +112,7 @@ test('new visitor sees the login page before content', async t => {
   assert.equal(await page.locator('.cover-mobile-intro').isVisible(), true);
   assert.equal(await page.locator('#coverAuthForm').isVisible(), true);
   assert.equal(await page.locator('#coverParticles').isVisible(), false);
+  assert.equal(await page.locator('#coverMeteors').isVisible(), false);
   assert.equal(await page.locator('.cover-meteor-field').count(), 0);
   assert.equal(await page.locator('.shell').isVisible(), false);
   assert.equal(await page.locator('body').getAttribute('class').then(s => s.includes('auth-gated')), true);
@@ -131,6 +132,9 @@ test('homepage cover opens and closes the login form', async t => {
 test('homepage particles respond to pointer movement', async t => {
   const { page } = await openPage(t, { viewport: { width: 820, height: 1024 } });
   await page.locator('#bookCover').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#coverMeteors').isVisible(), true);
+  await page.waitForFunction(() => document.getElementById('coverMeteors').width > 0);
+  assert.match(await page.locator('#bookCover').evaluate(node => getComputedStyle(node).backgroundImage), /night-sky-v1\.png/);
   assert.equal(await page.locator('.cover-meteor-field').count(), 0);
   await page.mouse.move(110, 320);
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('#coverPointerGlow')).opacity) > .8);
