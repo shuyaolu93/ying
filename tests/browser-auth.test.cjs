@@ -132,6 +132,9 @@ test('active account sees the homepage cover before opening the desk', async t =
   await page.locator('#coverEnter').click();
   assert.equal(await page.locator('#bookCover').isVisible(), false);
   assert.equal(await page.locator('.shell').isVisible(), true);
+  await page.goto('https://ying.test/?v=cover-preview');
+  await page.waitForFunction(() => document.body.classList.contains('home-intro'));
+  assert.equal(await page.locator('#bookCover').isVisible(), true);
 });
 
 test('expired session never reveals content during verification', async t => {

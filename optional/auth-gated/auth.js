@@ -18,7 +18,7 @@
   function showPending() { document.body.classList.remove('auth-gated', 'home-intro'); document.body.classList.add('auth-pending'); }
   function showCover(message) { document.body.classList.remove('auth-pending', 'home-intro'); document.body.classList.add('auth-gated'); if (message) { document.getElementById('bookCover').classList.add('form-open'); coverMessage(message); } }
   function showIntro() { document.body.classList.remove('auth-pending', 'auth-gated'); document.body.classList.add('home-intro'); document.getElementById('bookCover').classList.remove('form-open'); coverMessage(''); }
-  function showIntroOnEntry() { return /\/$/.test(window.location.pathname) && !window.location.search && !window.location.hash; }
+  function showIntroOnEntry() { return /\/$/.test(window.location.pathname) && !window.location.hash && !new URLSearchParams(window.location.search).has('workspace'); }
   function active() { return Boolean(user && user.active && new Date(user.entitlementUntil).getTime() > Date.now()); }
   function render() {
     var button = document.getElementById('accountButton'); if (!button) return;
