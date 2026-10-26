@@ -4,7 +4,7 @@
   var $ = function (selector) { return document.querySelector(selector); };
   var $$ = function (selector) { return document.querySelectorAll(selector); };
   var state = { x: 0, y: 0, quadrant: '宏观坐标原点', macroValid: true, macroContributions: { pmi: 0, social: 0, m2: 0, yield: 0 }, posture: '均衡姿态', confidence: '低置信', rationaleScore: 0, rationaleSupport: [], rationaleCounter: [], allocationType: 'balance', allocationValues: [45, 25, 10, 20], triggerLabels: [], valuationType: 'stable', valuationCalculated: false, valuationZone: '等待计算', valuationRange: '', scenarioValues: [], phaseDecision: '暂不建议买入', phaseReady: false, behaviorLevel: '未完成', behaviorReady: false, behaviorBlocked: false, viewMode: 'full', lastDataChangeAt: '', lastCalculatedAt: '', summaryGenerated: false, activeRole: 1, undoSnapshot: null, history: [], carryover: 0 };
-  var APP_VERSION = '2.6.4-free';
+  var APP_VERSION = '2.6.5-free';
   var RULE_VERSION = 'R2.4';
   var FORMULA_VERSION = 'F1.3';
   state.safetyMargin = null;
@@ -527,13 +527,13 @@
     if (stage === 'hold') ready = ready && validNumericInput('#singlePositionInput') && numberValue('#singlePositionInput', 101) <= 15;
     var decision; var detail;
     if (stage === 'buy') {
-      decision = ready ? (state.valuationZone === '偏低' ? '可以买入：可从小仓试错开始' : '买入硬条件通过，进入风险复核') : '暂不建议买入';
+      decision = ready ? '买入阶段条件通过，待风险与行为复核' : '暂不建议买入';
       detail = ready ? '三项硬条件、证据与至少 15% 的模型折价已通过；仍须通过风险管理和行为自检。' : !valuationAllowsBuy() ? '估值未计算、偏高、信号冲突、安全边际不足 15%，或 DDM 参数过度敏感，不能通过买入检查。' : '请完成买入阶段的 3 项硬条件并填写对应证据。';
     } else if (stage === 'hold') {
-      decision = ready ? '继续持有并按验证事件跟踪' : checked ? '持有依据不足，建议降低仓位或补充证据' : '暂不建议无条件持有';
+      decision = ready ? '持有阶段条件通过，待综合复核' : checked ? '持有依据不足，建议降低仓位或补充证据' : '暂不建议无条件持有';
       detail = ready ? '基本面与仓位边界均已确认。' : '持有阶段需要同时确认基本面和仓位，并写下最新证据。';
     } else {
-      decision = ready ? '触发卖出复核，可以执行退出计划' : checked ? '卖出条件尚未闭环' : '继续观察，尚未形成卖出证据';
+      decision = ready ? '卖出阶段条件通过，核对退出计划' : checked ? '卖出条件尚未闭环' : '继续观察，尚未形成卖出证据';
       detail = ready ? '逻辑证伪与资金去向均已记录。' : '卖出阶段需要明确证伪信号及卖出后的资金去向。';
     }
     state.phaseDecision = decision; state.phaseReady = ready;

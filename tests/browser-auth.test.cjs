@@ -152,6 +152,15 @@ test('valuation requires real inputs and hold or sell summaries do not require a
   assert.match(await page.locator('#riskValidation').textContent(), /卖出复核可继续/);
   await page.locator('#generateSummary').click();
   assert.match(await page.locator('#summaryOutput').inputValue(), /卖出证伪条件：/);
+  await page.locator('#stageBuy').check();
+  await page.locator('#calcInput0').fill('15');
+  await page.locator('#calculateValuation').click();
+  for (const [check, evidence] of [['phaseBuyLogic', 'evidenceBuyLogic'], ['phaseBuyValue', 'evidenceBuyValue'], ['phaseBuyStop', 'evidenceBuyStop']]) {
+    await page.locator('#' + check).check();
+    await page.locator('#' + evidence).fill('已核对的证据');
+  }
+  assert.match(await page.locator('#phaseDecision').textContent(), /待风险与行为复核/);
+  assert.match(await page.locator('#riskValidation').textContent(), /单票仓位需 ≤ 15%/);
 });
 
 test('login, redeem, personal center and logout remain usable', async t => {
