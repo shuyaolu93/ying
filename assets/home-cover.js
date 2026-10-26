@@ -27,7 +27,7 @@
     canvas.height = Math.round(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-    var count = Math.min(3200, Math.max(850, Math.round(width * 1.9)));
+    var count = Math.min(5200, Math.max(1700, Math.round(width * 3.2)));
     points = [];
     for (var i = 0; i < count; i += 1) {
       var band = i < count * .51 ? 0 : 1;
@@ -39,6 +39,7 @@
         x: x,
         spread: randomSpread(),
         phase: Math.random() * Math.PI * 2,
+        speed: .7 + Math.random() * .7,
         size: .55 + Math.random() * 1.5,
         color: color,
         opacity: .13 + Math.random() * .55,
@@ -63,23 +64,45 @@
     context.clearRect(0, 0, width, height);
     for (var i = 0; i < points.length; i += 1) {
       var point = points[i];
-      var x = point.x * width;
+      var progress = point.band === 2 ? point.x : (point.x + time * (point.band ? .000035 : .000028) * point.speed) % 1.2 - .1;
+      var x = progress * width;
       var y;
       if (point.band === 2) {
         y = point.y * height;
       } else if (point.band === 0) {
-        y = height * (.70 - .16 * point.x)
-          + Math.sin(point.x * 10.5 + time * .00024) * height * .063
-          + point.spread * height * .22;
+        y = height * (.70 - .16 * progress)
+          + Math.sin(progress * 10.5 + time * .00082) * height * .075
+          + point.spread * height * .20;
       } else {
-        y = height * (.52 - .20 * point.x)
-          + Math.sin(point.x * 10.2 + 1.7 + time * .00019) * height * .080
-          + point.spread * height * .19;
+        y = height * (.52 - .20 * progress)
+          + Math.sin(progress * 10.2 + 1.7 + time * .00068) * height * .095
+          + point.spread * height * .18;
       }
-      var shimmer = reducedMotion.matches ? 1 : .8 + .2 * Math.sin(time * .0014 + point.phase);
+      var shimmer = reducedMotion.matches ? 1 : .7 + .3 * Math.sin(time * .0028 + point.phase);
       context.fillStyle = 'rgba(' + point.color + ',' + (point.opacity * shimmer) + ')';
       context.fillRect(x, y, point.size, point.size);
     }
+    drawGlint(time, 0);
+    drawGlint(time, 1);
+  }
+
+  function drawGlint(time, band) {
+    var progress = (time * (band ? .000043 : .000034) + (band ? .46 : .08)) % 1.3 - .12;
+    var x = progress * width;
+    var y = band
+      ? height * (.44 - .16 * progress) + Math.sin(progress * 10.2 + 1.7 + time * .00068) * height * .095
+      : height * (.76 - .13 * progress) + Math.sin(progress * 10.5 + time * .00082) * height * .075;
+    var color = band ? '126,151,255' : '229,111,211';
+    var glow = context.createRadialGradient(x, y, 0, x, y, 35);
+    glow.addColorStop(0, 'rgba(' + color + ',.62)');
+    glow.addColorStop(.2, 'rgba(' + color + ',.22)');
+    glow.addColorStop(1, 'rgba(' + color + ',0)');
+    context.fillStyle = glow;
+    context.fillRect(x - 35, y - 35, 70, 70);
+    context.fillStyle = 'rgba(240,233,255,.82)';
+    context.beginPath();
+    context.arc(x, y, 1.8, 0, Math.PI * 2);
+    context.fill();
   }
 
   function isVisible() {
